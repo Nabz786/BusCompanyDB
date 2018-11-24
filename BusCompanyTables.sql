@@ -20,15 +20,15 @@ DROP TABLE StopOnRoute CASCADE CONSTRAINTS;
 CREATE TABLE Rider 
 (
 	riderId INTEGER PRIMARY KEY,
-	fName CHAR(15) NOT NULL,
-	lName CHAR(15) NOT NULL
+	fName VARCHAR(15) NOT NULL,
+	lName VARCHAR(15) NOT NULL
 );
 
 CREATE TABLE Driver
 (
 	Ssn INTEGER PRIMARY KEY,
-	fName CHAR(15) NOT NULL,
-	lName CHAR(15) NOT NULL,
+	fName VARCHAR(15) NOT NULL,
+	lName VARCHAR(15) NOT NULL,
 	salary INTEGER NOT NULL,
 	dRank INTEGER NOT NULL,
 	startDate DATE NOT NULL
@@ -45,13 +45,13 @@ CREATE TABLE Bus
 CREATE TABLE Route
 (
 	rNum INTEGER PRIMARY KEY,
-	startLoc CHAR(16) NOT NULL,
-	endLoc CHAR(16) NOT NULL
+	startLoc VARCHAR(16) NOT NULL,
+	endLoc VARCHAR(16) NOT NULL
 );
 
 CREATE TABLE Stop
 (
-	stopName CHAR(16) Primary KEY,
+	stopName VARCHAR(16) Primary KEY,
 	stopCapacity INTEGER NOT NULL
 );
 
@@ -65,8 +65,8 @@ CREATE TABLE FinHistory
 
 CREATE TABLE SchedArrivalTime
 (
-	schedArrivalTime CHAR(16),
-	stopName CHAR(16),
+	schedArrivalTime VARCHAR(16),
+	stopName VARCHAR(16),
 	CONSTRAINT pKey2 PRIMARY KEY (schedArrivalTime, stopName),
 	CONSTRAINT fKey3 FOREIGN KEY (stopName) REFERENCES Stop(stopName)
 );
@@ -77,8 +77,8 @@ CREATE TABLE RodeOn
 	busVin INTEGER,
 	CONSTRAINT pKey3 PRIMARY KEY (passengerID, busVin),
 	rideDate DATE NOT NULL,
-	onStop CHAR(16) NOT NULL,
-	offStop Char(16) NOT NULL,
+	onStop VARCHAR(16) NOT NULL,
+	offStop VARCHAR(16) NOT NULL,
 	CONSTRAINT fKey4 FOREIGN KEY (passengerID) REFERENCES Rider(riderId),
 	CONSTRAINT fKey5 FOREIGN KEY (busVin) REFERENCES Bus(Vin),
 	CONSTRAINT fKey6 FOREIGN KEY (onStop) REFERENCES Stop(stopName),
@@ -99,7 +99,7 @@ CREATE TABLE AssignedTo
 CREATE TABLE StopOnRoute
 (
 	rNum INTEGER,
-	stopName CHAR(16),
+	stopName VARCHAR(16),
 	stopSequence Integer NOT NULL,
 	CONSTRAINT pKey5 PRIMARY KEY (rNum, stopName),
 	CONSTRAINT fKey10 FOREIGN KEY (rNum) REFERENCES Route(rNum),
