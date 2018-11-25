@@ -59,15 +59,15 @@ CREATE TABLE Bus
 
 CREATE TABLE Stop
 (
-	stopName VARCHAR(16) PRIMARY KEY,
+	stopName VARCHAR(20) PRIMARY KEY,
 	stopCapacity INTEGER NOT NULL
 );	
 
 CREATE TABLE Route
 (
 	rNum INTEGER PRIMARY KEY,
-	startLoc VARCHAR(16) NOT NULL,
-	endLoc VARCHAR(16) NOT NULL,
+	startLoc VARCHAR(20) NOT NULL,
+	endLoc VARCHAR(20) NOT NULL,
 	--
 	--IC_startLoc: The start location of a route must be an existing stop
 	CONSTRAINT IC_startLoc FOREIGN KEY (startLoc) REFERENCES Stop(stopName),
@@ -90,13 +90,13 @@ CREATE TABLE FinHistory
 	--fKey2: A route must exist to have a financial history
 	CONSTRAINT fKey2 FOREIGN KEY (routeNum) REFERENCES Route(rNum),
 	--IC_posRev: projectd, actual revenues, and expense must be positive numbers
-	CONSTRAINT IC_posRev CHECK(projRev > 0 AND actRev > 0 AND expenses > 0)
+	CONSTRAINT IC_posRev CHECK(projRev >= 0 AND actRev >= 0 AND expenses >= 0)
 );
 
 CREATE TABLE SchedArrivalTime
 (
 	schedArrivalTime VARCHAR(16),
-	stopName VARCHAR(16),
+	stopName VARCHAR(20),
 	--
 	--pKey2: A stop may have multiple bus arrivals
 	CONSTRAINT pKey2 PRIMARY KEY (schedArrivalTime, stopName),
@@ -110,19 +110,17 @@ CREATE TABLE RodeOn
 	busVin INTEGER,
 	CONSTRAINT pKey3 PRIMARY KEY (passengerID, busVin),
 	rideDate DATE NOT NULL,
-	onStop VARCHAR(16) NOT NULL,
-	offStop VARCHAR(16) NOT NULL,
+	onStop VARCHAR(20) NOT NULL,
+	offStop VARCHAR(20) NOT NULL,
 	--
-	--fKey4: a passenger must be someone who has ridden a bus
-	CONSTRAINT fKey4 FOREIGN KEY (passengerID) REFERENCES Rider(riderId),
-	--fKey4: a bus must be an existing bus
-	CONSTRAINT fKey5 FOREIGN KEY (busVin) REFERENCES Bus(Vin),
-	--fKey6: The stop the passenger boarded the bus must exist
-	CONSTRAINT fKey6 FOREIGN KEY (onStop) REFERENCES Stop(stopName),
-	--fKey7: The stpo where the passenger exited must exist
-	CONSTRAINT fKey7 FOREIGN KEY (offStop) REFERENCES Stop(stopName),
-	--IC-rDate:The ride date cannot be in the future
-	CONSTRAINT IC_rDate CHECK(rdate <= GetDate())
+	--fKey_pExists: a passenger must be someone who has ridden a bus
+	CONSTRAINT fKey_pExists FOREIGN KEY (passengerID) REFERENCES Rider(riderId),
+	--fKey_bExists: a bus must be an existing bus
+	CONSTRAINT fKey_bExists FOREIGN KEY (busVin) REFERENCES Bus(Vin),
+	--fKey_stpExists: The stop the passenger boarded the bus must exist
+	CONSTRAINT fKey_stpExists FOREIGN KEY (onStop) REFERENCES Stop(stopName),
+	--fKey_ostpExists: The stpo where the passenger exited must exist
+	CONSTRAINT fKey_oStpExists FOREIGN KEY (offStop) REFERENCES Stop(stopName)
 );
 
 CREATE TABLE AssignedTo
@@ -130,30 +128,30 @@ CREATE TABLE AssignedTo
 	vIn Integer,
 	rNum Integer,
 	dAssigned Date NOT NULL,
-	dRemoved DATE;
+	dRemoved DATE,
 	--
 	--pKey4: To be assigned to a route a bus must exist on an existing route
 	CONSTRAINT pKey4 PRIMARY KEY (vIn, rNum),
-	--fKey8: To be assigned to a route a bus must be an existing bus
-	CONSTRAINT fKey8 FOREIGN KEY (vIn) REFERENCES Bus(VIN),
-	--fKey9: A route must exist beforehand in order to be assigned a bus
-	CONSTRAINT fKey9 FOREIGN KEY (rNum) REFERENCES Route(rNum),
+	--fKey_buExists: To be assigned to a route a bus must be an existing bus
+	CONSTRAINT fKey_buExists FOREIGN KEY (vIn) REFERENCES Bus(VIN),
+	--fKey9_rExists: A route must exist beforehand in order to be assigned a bus
+	CONSTRAINT fKey_rExists FOREIGN KEY (rNum) REFERENCES Route(rNum),
 	--IC_aDate: The date a bus is removed from service cannot be before the assigned date
-	CONSTRAINT IC_aDate CHECK(NOT(dRemoved < dAssigned)
+	CONSTRAINT IC_aDate CHECK(NOT(dRemoved < dAssigned))
 );
 
 CREATE TABLE StopOnRoute
 (
 	rNum INTEGER,
-	stopName VARCHAR(16),
+	stopName VARCHAR(20),
 	stopSequence Integer NOT NULL,
 	--
 	--pKey5: A stop can be assigned to multiple routes
 	CONSTRAINT pKey5 PRIMARY KEY (rNum, stopName),
-	--fKey10: a stop must be assigned to an existing route
-	CONSTRAINT fKey10 FOREIGN KEY (rNum) REFERENCES Route(rNum),
-	--fKey11: A route can only be assigned existing stops
-	CONSTRAINT fKey11 FOREIGN KEY (stopName) REFERENCES Stop(stopName),
+	--fKey_rtExists: a stop must be assigned to an existing route
+	CONSTRAINT fKey_rtExists FOREIGN KEY (rNum) REFERENCES Route(rNum),
+	--fKey_stp1Exists: A route can only be assigned existing stops
+	CONSTRAINT fKey_stp1Exists FOREIGN KEY (stopName) REFERENCES Stop(stopName),
 	--IC_stopSeq: A stop sequence value cannot be negative
 	CONSTRAINT IC_stopSeq CHECK(stopSequence > 0)
 );	
@@ -161,7 +159,9 @@ CREATE TABLE StopOnRoute
 
 SET FEEDBACK OFF
 
---INSERT INTO Rider VALUES (123, 'John', 'Smith');
+INSERT INTO Rider VALUES (123, 'John', 'Smith');
+INSERT INTO Rider VALUES (222, 'Steve', 'Jones');
+INSERT INTO Rider VALUES (444, 'John', 'Smith');
 --Driver IC Tests
 --
 --Invalid Rank
@@ -174,11 +174,15 @@ INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 1000, 2, TO_DATE('08/09/
 INSERT INTO Driver VALUES (947374938, 'Kevin', 'Jones', 45000, 5, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
 --Invalid Salary
 INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 4, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
+--Valid
+INSERT INTO Driver VALUES (243243, 'Kevin', 'Jones', 45000, 4, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
 --
 --Bus IC Tests
 --
 --Valid
 INSERT INTO Bus VALUES (1234433, 64, 947374938);
+--Valid
+INSERT INTO BUS VALUES (32232, 50, 243243);
 --Invalid: referencing a driver that doesnt exist
 INSERT INTO BUS VALUES (243243, 50, 123);
 --Invalid: Num of seats is less than min of 30
@@ -191,31 +195,91 @@ INSERT INTO Stop VALUES ('111 Michigan St', 50);
 INSERT INTO Stop VALUES ('Monroe Ave', 55);
 --Valid
 INSERT INTO Route VALUES (5, '123 W 5th St', 'Monroe Ave');
+--Valid
+INSERT INTO Route VALUES (7, '123 W 5th St', '111 Michigan St');
 --Invalid: Route numbers cannot be the same
 INSERT INTO Route VALUES (5, 'Monroe Ave', '111 Michigan St');
 --Invalid: Start and end stops cannot be the same
 INSERT INTO Route Values (6, 'Monroe Ave', 'Monroe Ave');
-
---INSERT INTO finHistory VALUES (TO_DATE('08/09/2014', 'DD/MM/YYYY'), 5);
---INSERT INTO SchedArrivalTime VALUES ('09:30pm', 'Monroe Ave');
---INSERT INTO RodeOn VALUES (123, 1234433, TO_DATE('08/05/2001', 'DD/MM/YYYY'), 'Monroe Ave', '123 W 5th St');
---INSERT INTO AssignedTo VALUES (1234433, 5, TO_DATE('04/04/2001', 'DD/MM/YYYY'), TO_DATE('05/04/2001', 'DD/MM/YYYY'));
---INSERT INTO StopOnRoute VALUES(5, 'Monroe Ave', 1);
---INSERT INTO StopOnRoute Values(4, 'Monroe Ave', 8);
+--
+--FinHistory IC Tests
+--
+--Valid
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, 800, 12);
+--Invalid: Two fin histories for a route on same day
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, 800, 12);
+--Invalid: Negative values 
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, -1000, 800, -12);
+--Invalid Negative Values
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, -800, 12);
+--Invalid: Non-existant route
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 999, 1000, 800, 12);
+--
+--SchedArrivalTime IC Tests
+--
+--Valid
+INSERT INTO SchedArrivalTime VALUES ('09:30pm', 'Monroe Ave');
+--Valid
+INSERT INTO SchedArrivalTime VALUES ('04:30pm', '111 Michigan St');
+--Invalid: No duplicate times for a stop
+INSERT INTO SchedArrivalTime VALUES ('04:30pm', '111 Michigan St');
+--Invalid: A stop must exist to have a scheduled bus stop time
+INSERT INTO SchedArrivalTime VALUES ('04:35pm', '123 Allendale Ave');
+--
+--RodeOn IC Tests
+--
+--Valid
+INSERT INTO RodeOn VALUES (123, 1234433, TO_DATE('12/12/2015', 'MM/DD/YYYY'), '123 W 5th St', 'Monroe Ave');
+--Valid
+INSERT INTO RodeOn VALUES (222, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
+--Invalid: Non-Existant rider
+INSERT INTO RodeOn VALUES (999, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
+--Invalid Non-Existant bus
+INSERT INTO RodeOn VALUES (222, 8373723, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
+--Invalid: Non-Exsitant on stop
+INSERT INTO RodeOn VALUES (123, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), '123 Ave', '111 Michigan St');
+--Invalid: Non-Existant off stop
+INSERT INTO RodeOn VALUES (444, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '555 Michigan St');
+--
+--AssignedTo IC Tests
+--
+--Valid 
+INSERT INTO AssignedTo VALUES (32232, 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
+--Valid
+INSERT INTO AssignedTo VALUES (32232, 7, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
+--Invalid: Bus Doesnt exist
+INSERT INTO AssignedTo VALUES (32, 7, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
+--Invalid: Route does not exist
+INSERT INTO AssignedTo VALUES (1234433, 90, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
+--Invalid: Removed date before assigned date
+INSERT INTO AssignedTo VALUES (32232, 7, TO_DATE('04/12/2012', 'MM/DD/YYYY'), TO_DATE('03/12/2012', 'MM/DD/YYYY'));
+--
+--StopOnRoute IC Tests
+--
+--Valid
+INSERT INTO StopOnRoute VALUES (5, 'Monroe Ave', 1);
+--Valid
+INSERT INTO StopOnRoute VALUES (7, '111 Michigan St', 10);
+--Invalid: Non-Existant route
+INSERT INTO StopOnRoute VALUES (20, '111 Michigan St', 20);
+--Invalid: Non-Existant Stop
+INSERT INTO StopOnRoute VALUES (5, '12312 Test St', 2);
+--Invalid: Negative stop sequence value
+INSERT INTO StopOnRoute VALUES (5, '111 Michigan St', -2);
 
 SET FEEDBACK ON
 COMMIT;
 
---SELECT * FROM Rider;
+SELECT * FROM Rider;
 SELECT * FROM Driver;
 SELECT * FROM Bus;
 SELECT * FROM Route;
 SELECT * FROM Stop;
---SELECT * FROM finHistory;
---SELECT * FROM SchedArrivalTime;
---SELECT * FROM RodeOn;
---SELECT * FROM AssignedTo;
---SELECT * FROM StopOnRoute;
+SELECT * FROM finHistory;
+SELECT * FROM SchedArrivalTime;
+SELECT * FROM RodeOn;
+SELECT * FROM AssignedTo;
+SELECT * FROM StopOnRoute;
 
 COMMIT;
 
