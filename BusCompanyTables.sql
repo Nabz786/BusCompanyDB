@@ -81,15 +81,26 @@ CREATE TABLE FinHistory
 (
 	historyDate DATE,
 	routeNum INTEGER,
+	projRev DECIMAL NOT NULL,
+	actRev DECIMAL NOT NULL,
+	expenses DECIMAL NOT NULL,
+	--
+	--pKey1: A financial history can be obtained for the same route on different days
 	CONSTRAINT pKey1 PRIMARY KEY (historyDate, routeNum),
-	CONSTRAINT fKey2 FOREIGN KEY (routeNum) REFERENCES Route(rNum)
+	--fKey2: A route must exist to have a financial history
+	CONSTRAINT fKey2 FOREIGN KEY (routeNum) REFERENCES Route(rNum),
+	--IC_posRev: projectd, actual revenues, and expense must be positive numbers
+	CONSTRAINT IC_posRev CHECK(projRev > 0 AND actRev > 0 AND expenses > 0)
 );
 
 CREATE TABLE SchedArrivalTime
 (
 	schedArrivalTime VARCHAR(16),
 	stopName VARCHAR(16),
+	--
+	--pKey2: A stop may have multiple bus arrivals
 	CONSTRAINT pKey2 PRIMARY KEY (schedArrivalTime, stopName),
+	--fKey3: A stop must be an existing stop to have scheduled busses
 	CONSTRAINT fKey3 FOREIGN KEY (stopName) REFERENCES Stop(stopName)
 );
 
@@ -101,11 +112,17 @@ CREATE TABLE RodeOn
 	rideDate DATE NOT NULL,
 	onStop VARCHAR(16) NOT NULL,
 	offStop VARCHAR(16) NOT NULL,
+	--
+	--fKey4: a passenger must be someone who has ridden a bus
 	CONSTRAINT fKey4 FOREIGN KEY (passengerID) REFERENCES Rider(riderId),
+	--fKey4: a bus must be an existing bus
 	CONSTRAINT fKey5 FOREIGN KEY (busVin) REFERENCES Bus(Vin),
+	--fKey6: The stop the passenger boarded the bus must exist
 	CONSTRAINT fKey6 FOREIGN KEY (onStop) REFERENCES Stop(stopName),
-	CONSTRAINT fKey7 FOREIGN KEY (offStop) REFERENCES Stop(stopName)
-	--ride date cannot be a fture date
+	--fKey7: The stpo where the passenger exited must exist
+	CONSTRAINT fKey7 FOREIGN KEY (offStop) REFERENCES Stop(stopName),
+	--IC-rDate:The ride date cannot be in the future
+	CONSTRAINT IC_rDate CHECK(rdate <= GetDate())
 );
 
 CREATE TABLE AssignedTo
@@ -113,11 +130,16 @@ CREATE TABLE AssignedTo
 	vIn Integer,
 	rNum Integer,
 	dAssigned Date NOT NULL,
-	dRemoved DATE NOT NULL,
+	dRemoved DATE;
+	--
+	--pKey4: To be assigned to a route a bus must exist on an existing route
 	CONSTRAINT pKey4 PRIMARY KEY (vIn, rNum),
+	--fKey8: To be assigned to a route a bus must be an existing bus
 	CONSTRAINT fKey8 FOREIGN KEY (vIn) REFERENCES Bus(VIN),
-	CONSTRAINT fKey9 FOREIGN KEY (rNum) REFERENCES Route(rNum)
-	--date assigned cannot be a future date
+	--fKey9: A route must exist beforehand in order to be assigned a bus
+	CONSTRAINT fKey9 FOREIGN KEY (rNum) REFERENCES Route(rNum),
+	--IC_aDate: The date a bus is removed from service cannot be before the assigned date
+	CONSTRAINT IC_aDate CHECK(NOT(dRemoved < dAssigned)
 );
 
 CREATE TABLE StopOnRoute
@@ -125,10 +147,15 @@ CREATE TABLE StopOnRoute
 	rNum INTEGER,
 	stopName VARCHAR(16),
 	stopSequence Integer NOT NULL,
+	--
+	--pKey5: A stop can be assigned to multiple routes
 	CONSTRAINT pKey5 PRIMARY KEY (rNum, stopName),
+	--fKey10: a stop must be assigned to an existing route
 	CONSTRAINT fKey10 FOREIGN KEY (rNum) REFERENCES Route(rNum),
-	CONSTRAINT fKey11 FOREIGN KEY (stopName) REFERENCES Stop(stopName)
-	--stop sequence value cannot be negative and must be in sequence with other stops
+	--fKey11: A route can only be assigned existing stops
+	CONSTRAINT fKey11 FOREIGN KEY (stopName) REFERENCES Stop(stopName),
+	--IC_stopSeq: A stop sequence value cannot be negative
+	CONSTRAINT IC_stopSeq CHECK(stopSequence > 0)
 );	
 
 
