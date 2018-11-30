@@ -35,26 +35,12 @@ CREATE TABLE Driver
 	--
 	--IC_ssn: Make sure that an SSN contains only 9 numbers
 --	CONSTRAINT DrIC1 CHECK(REGEXP_LIKE(Ssn,'^[[:digit:]]{9}$'))
-	--IC_rank: A drivers rank is only between 1 and 5 inclusive
-	CONSTRAINT IC_rank CHECK(NOT(dRank < 1 OR dRank > 5)),
+	--IC_rank: A drivers rank is only between 1 and 3 inclusive
+	CONSTRAINT IC_rank CHECK(NOT(dRank < 1 OR dRank > 3)),
 	--IC_ranksal: Drivers >= rank 3 must make at least $45000
-	CONSTRAINT IC_rankSal CHECK(NOT(dRank > 3 AND salary < 45000)),
+	CONSTRAINT IC_rankSal CHECK(NOT(dRank = 3 AND salary < 45000)),
 	--IC_rankmin: All salaries are at least 10000
 	CONSTRAINT IC_rankMin CHECK(salary >= 10000)
-);
-
-CREATE TABLE Bus
-(
-	VIN VARCHAR(7) PRIMARY KEY,
-	numSeats INTEGER NOT NULL,
-	driverSsn INTEGER NOT NULL,
-	--
-	--fKey1: A bus is assigned a driver from the list of active drivers
-	CONSTRAINT fKey1 FOREIGN KEY (driverSsn) REFERENCES Driver(Ssn) ON DELETE CASCADE,
-	--IC_oneDriver: An active bus only has one driver 
-	CONSTRAINT IC_oneDriver UNIQUE (driverSsn),
-	--IC_seatMin All Busses have a minimum of 30 seats
-	CONSTRAINT IC_seatMin CHECK(numSeats >= 30)
 );
 
 CREATE TABLE Stop
@@ -81,13 +67,30 @@ CREATE TABLE Route
 	CONSTRAINT IC_notSame CHECK(startLoc <> endLoc)
 );
 
+CREATE TABLE Bus
+(
+	VIN VARCHAR(7) PRIMARY KEY,
+	numSeats INTEGER NOT NULL,
+	driverSsn INTEGER NOT NULL,
+	routeNum INTEGER NOT NULL,
+	--
+	--fKey1: A bus is assigned a driver from the list of active drivers
+	CONSTRAINT fKey1 FOREIGN KEY (driverSsn) REFERENCES Driver(Ssn) ON DELETE CASCADE,
+	--IC_oneDriver: An active bus only has one driver 
+	CONSTRAINT IC_oneDriver UNIQUE (driverSsn),
+	--ic_oneRoute: A bus is assigned to one route only
+	CONSTRAINT IC_oneRoute FOREIGN KEY (routeNum) REFERENCES Route(rNum),
+	--IC_seatMin All Busses have a minimum of 30
+	CONSTRAINT IC_seatMin CHECK(numSeats >= 30)
+);
+
 CREATE TABLE FinHistory
 (
 	historyDate DATE,
 	routeNum INTEGER,
-	projRev DECIMAL NOT NULL,
-	actRev DECIMAL NOT NULL,
-	expenses DECIMAL NOT NULL,
+	projRev DECIMAL(7,2) NOT NULL,
+	actRev DECIMAL(7,2) NOT NULL,
+	expenses DECIMAL(7,2) NOT NULL,
 	--
 	--pKey1: A financial history can be obtained for the same route on different days
 	CONSTRAINT pKey1 PRIMARY KEY (historyDate, routeNum),
@@ -127,23 +130,6 @@ CREATE TABLE RodeOn
 	CONSTRAINT fKey_oStpExists FOREIGN KEY (offStop) REFERENCES Stop(stopName)
 );
 
-CREATE TABLE AssignedTo
-(
-	vIn VARCHAR(7),
-	rNum INTEGER,
-	dAssigned DATE NOT NULL,
-	dRemoved DATE,
-	--
-	--pKey4: To be assigned to a route a bus must exist on an existing route
-	CONSTRAINT pKey4 PRIMARY KEY (vIn, rNum),
-	--fKey_buExists: To be assigned to a route a bus must be an existing bus
-	CONSTRAINT fKey_buExists FOREIGN KEY (vIn) REFERENCES Bus(VIN),
-	--fKey9_rExists: A route must exist beforehand in order to be assigned a bus
-	CONSTRAINT fKey_rExists FOREIGN KEY (rNum) REFERENCES Route(rNum),
-	--IC_aDate: The date a bus is removed from service cannot be before the assigned date
-	CONSTRAINT IC_aDate CHECK(NOT(dRemoved < dAssigned))
-);
-
 CREATE TABLE StopOnRoute
 (
 	rNum INTEGER,
@@ -177,21 +163,12 @@ INSERT INTO Rider VALUES (293308, 'Sharon', 'Garcia');
 --
 -- Populate the Driver Table
 --
-INSERT INTO Driver VALUES (685320372, 'Lillian', 'Bryant', 25000, 1, TO_DATE('08/09/2015', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (157729572, 'Debra', 'Cooper', 49000, 3, TO_DATE('08/09/2009', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (868142440, 'Justin', 'Ward', 55000, 5, TO_DATE('08/09/2000', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (222656890, 'Larry', 'Taylor', 35000, 2, TO_DATE('08/09/2012', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (897461302, 'James', 'Bush', 51000, 4, TO_DATE('08/09/2006', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (509990039, 'Delia', 'Jones', 42000, 3, TO_DATE('08/09/2008', 'MM/DD/YYYY'));
---
--- Populate the Bus Table
---
-INSERT INTO Bus VALUES ('1FDX4P1', 64, 685320372);
-INSERT INTO Bus VALUES ('WP0AB09', 64, 157729572);
-INSERT INTO Bus VALUES ('1GCJC39', 64, 868142440);
-INSERT INTO Bus VALUES ('JN8AR05', 64, 222656890);
-INSERT INTO Bus VALUES ('2BVBF34', 64, 897461302);
-INSERT INTO Bus VALUES ('1X2V067', 64, 509990039);
+INSERT INTO Driver VALUES (685320372, 'Lillian', 'Bryant', 25000, 1, TO_DATE('03/09/2015', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (157729572, 'Debra', 'Cooper', 49000, 3, TO_DATE('05/25/2009', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (868142440, 'Justin', 'Ward', 55000, 3, TO_DATE('09/28/2000', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (222656890, 'Larry', 'Taylor', 23000, 1, TO_DATE('12/09/2012', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (897461302, 'James', 'Bush', 51000, 3, TO_DATE('02/12/2006', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (120384921, 'David', 'Ross', 44000, 2, TO_DATE('03/28/2004', 'MM/DD/YYYY'));
 --
 -- Populate the Stop Table
 --
@@ -208,47 +185,74 @@ INSERT INTO Stop VALUES ('Rose Garden', 60);
 -- Populate the Route Table
 --
 INSERT INTO Route VALUES (1, 'Greenview St', 'State St');
-INSERT INTO Route VALUES (2, 'Hanover Ave', 'Hilldale Rd');
-INSERT INTO Route VALUES (3, 'Bayberry Ln', 'Rose Garden');
+INSERT INTO Route VALUES (2, 'State St', 'Greenview St');
+INSERT INTO Route VALUES (3, 'Hanover Ave', 'Hilldale Rd');
+INSERT INTO Route VALUES (4, 'Hilldale Rd', 'Hanover Ave');	
+INSERT INTO Route VALUES (5, 'Bayberry Ln', 'Rose Garden');
+INSERT INTO Route VALUES (6, 'Rose Garden', 'Bayberry Ln');
+--
+-- Populate the bus table
+--
+INSERT INTO Bus VALUES ('1FDX4P1', 30, 685320372, 1);
+INSERT INTO Bus VALUES ('WP0AB09', 30, 157729572, 2);
+INSERT INTO Bus VALUES ('1GCJC39', 30, 868142440, 3);
+INSERT INTO Bus VALUES ('JN8AR05', 40, 222656890, 4);
+INSERT INTO Bus VALUES ('2BVBF34', 40, 897461302, 5);
+INSERT INTO Bus VALUES ('1X2V067', 30, 120384921, 6);
 --
 -- Populate Financial Histories for routes
 --
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2002', 'MM/DD/YYYY'), 1, 11500.97, 13000.12, 1200.98);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2002', 'MM/DD/YYYY'), 1, 13500.97, 14000.12, 1200.98);
 INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 2, 17000.66, 15800.22, 3212.65);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 3, 9876.43, 12343,87, 983.12);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2005', 'MM/DD/YYYY'), 1, 8798.40, 9201.22, 2987.76);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2017', 'MM/DD/YYYY'), 2, 18723.33, 20847.39, 4099.30);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 3, 14387.86, 16322.81, 3722.34);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 1, 10247.36, 11892.22, 2456.55);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 2, 14998.76, 17822.25, 3892.32);
-INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 3, 7922.43, 9908.32, 1309.33);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 3, 9876.43, 12343.87, 983.12);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2006', 'MM/DD/YYYY'), 4, 10876.43, 11133.87, 1189.12);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 5, 11076.23, 12213.92, 3012.14);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 6, 10876.43, 92343.87, 1083.32);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2005', 'MM/DD/YYYY'), 1, 18798.40, 18201.22, 1987.76);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2017', 'MM/DD/YYYY'), 2, 19723.33, 19847.39, 4099.30);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 3, 14387.86, 12322.22, 3722.34);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2007', 'MM/DD/YYYY'), 4, 12134.12, 11322.41, 2022.45);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2005', 'MM/DD/YYYY'), 5, 11387.23, 12322.67, 3454.14);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2012', 'MM/DD/YYYY'), 6, 10387.43, 10322.82, 1022.75);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 1, 19047.23, 16892.87, 2456.55);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2015', 'MM/DD/YYYY'), 2, 15998.71, 17822.25, 4092.32);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 3, 10922.12,8908.11, 1231.21);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2004', 'MM/DD/YYYY'), 4, 8922.32, 9908.32, 1119.39);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2006', 'MM/DD/YYYY'), 5, 11922.42, 10908.37, 2909.23);
+INSERT INTO FinHistory VALUES(TO_DATE('08/09/2003', 'MM/DD/YYYY'), 6, 7922.87, 9908.38, 999.34);
 --
 -- Populate SchedArrivalTime Table
 --
-INSERT INTO SchedArrivalTime VALUES ('06:10am', 'Greenview St');
-INSERT INTO SchedArrivalTime VALUES ('09:08pm', 'Greenview St');
-INSERT INTO SchedArrivalTime VALUES ('06:20am', 'W Hamilton St');
-INSERT INTO SchedArrivalTime VALUES ('09:18pm', 'W Hamilton St');
-INSERT INTO SchedArrivalTime VALUES ('06:30am', 'Ridgewood Prk');
-INSERT INTO SchedArrivalTime VALUES ('09:25pm', 'Ridgewood Prk');
-INSERT INTO SchedArrivalTime VALUES ('06:39am', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('09:34pm', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('06:00am', 'Hanover Ave');
-INSERT INTO SchedArrivalTime VALUES ('09:00pm', 'Hanover Ave');
-INSERT INTO SchedArrivalTime VALUES ('06:12am', 'Ridgewood Prk');
-INSERT INTO SchedArrivalTime VALUES ('09:10am', 'Ridgewood Prk');
-INSERT INTO SchedArrivalTime VALUES ('06:19am', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('09:14pm', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('06:29am', 'Hilldale Rd');
-INSERT INTO SchedArrivalTime VALUES ('09:24pm', 'Hilldale Rd');
-INSERT INTO SchedArrivalTime VALUES ('06:20am', 'Bayberry Ln');
-INSERT INTO SchedArrivalTime VALUES ('09:15pm', 'Bayberry Ln');
-INSERT INTO SchedArrivalTime VALUES ('06:27am', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('09:20pm', 'State St');
-INSERT INTO SchedArrivalTime VALUES ('06:38am', 'Windfall St');
-INSERT INTO SchedArrivalTime VALUES ('09:24pm', 'Windfall St');
-INSERT INTO SchedArrivalTime VALUES ('06:43am', 'Rose Garden');
-INSERT INTO SchedArrivalTime VALUES ('09:29pm', 'Rose Garden');
+--R1 
+INSERT INTO SchedArrivalTime VALUES ('06:00am', 'Greenview St');
+INSERT INTO SchedArrivalTime Values ('06:20am', 'W Hamilton St');
+INSERT INTO SchedArrivalTime Values ('06:30am', 'Ridgewood Prk');
+INSERT INTO SchedArrivalTime Values ('06:39am', 'State St');
+--R2
+INSERT INTO SchedArrivalTime Values ('06:50am', 'State St');
+INSERT INTO SchedArrivalTime Values ('07:02am', 'Ridgewood Prk');
+INSERT INTO SchedArrivalTime Values ('07:13am', 'W Hamilton St');
+INSERT INTO SchedArrivalTime Values ('07:25am', 'Greenview St');
+--R3
+INSERT INTO SchedArrivalTime Values ('06:00am', 'Hanover Ave');
+INSERT INTO SchedArrivalTime Values ('06:12am', 'Ridgewood Prk');
+INSERT INTO SchedArrivalTime Values ('06:19am', 'State St');
+INSERT INTO SchedArrivalTime Values ('06:28am', 'Hilldale Rd');
+--R4
+INSERT INTO SchedArrivalTime Values ('06:34am', 'Hilldale Rd');
+INSERT INTO SchedArrivalTime Values ('06:45am', 'State St');
+INSERT INTO SchedArrivalTime Values ('06:53am', 'Ridgewood Prk');
+INSERT INTO SchedArrivalTime Values ('07:00am', 'Hanover Ave');
+--R5
+INSERT INTO SchedArrivalTime Values ('06:00am', 'Bayberry Ln');
+INSERT INTO SchedArrivalTime Values ('06:11am', 'State St');
+INSERT INTO SchedArrivalTime Values ('06:17am', 'Windfall St');
+INSERT INTO SchedArrivalTime Values ('06:25am', 'Rose Garden');
+--R6
+INSERT INTO SchedArrivalTime Values ('06:30am', 'Rose Garden');
+INSERT INTO SchedArrivalTime Values ('06:37am', 'Windfall St');
+INSERT INTO SchedArrivalTime Values ('06:46am', 'State St');
+INSERT INTO SchedArrivalTime Values ('06:56am', 'Bayberry Ln');
 --
 --Populate RodeOn Table
 --
@@ -256,23 +260,41 @@ INSERT INTO RodeOn VALUES (965574, '1FDX4P1', TO_DATE('02/12/2002', 'MM/DD/YYYY'
 INSERT INTO RodeOn VALUES (990311, '1GCJC39', TO_DATE('04/25/2007', 'MM/DD/YYYY'), 'Hanover Ave', 'State St');
 INSERT INTO RodeOn VALUES (120746, '2BVBF34', TO_DATE('07/19/2015', 'MM/DD/YYYY'), 'Bayberry Ln', 'Rose Garden');
 INSERT INTO RodeOn VALUES (526975, '1X2V067', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'Windfall St', 'State St');
-INSERT INTO RodeOn VALUES (526975, 'WPOAB09', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'State St', 'W Hamilton St');
-INSERT INTO RodeOn VALUES (193044, 'JN8AR05', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'Ridgewood Prk', 'State St');
-INSERT INTO RodeOn VALUES (193044, '2BVBF34', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'State St', 'Bayberry Ln');
+INSERT INTO RodeOn VALUES (526975, 'WP0AB09', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'State St', 'W Hamilton St');
+INSERT INTO RodeOn VALUES (193044, '1GCJC39', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'Ridgewood Prk', 'State St');
+INSERT INTO RodeOn VALUES (193044, '1X2V067', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'State St', 'Bayberry Ln');
 INSERT INTO RodeOn VALUES (128525, '1X2V067', TO_DATE('09/15/2009', 'MM/DD/YYYY'), 'Rose Garden', 'State St');
-INSERT INTO RodeOn VALUES (128525, '1FDX4P1', TO_DATE('09/15/2009', 'MM/DD/YYYY'), 'State St', 'Greenview St');
+INSERT INTO RodeOn VALUES (128525, 'WP0AB09', TO_DATE('09/15/2009', 'MM/DD/YYYY'), 'State St', 'Greenview St');
 INSERT INTO RodeOn VALUES (390503, '1GCJC39', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Hanover Ave', 'Ridgewood Prk');
-INSERT INTO RodeOn VALUES (390503, 'WPOAB09', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Ridgewood Prk', 'W Hamilton St');
-INSERT INTO RodeOn VALUES (293308, '2BVBF34', TO_DATE('12/21/2008', 'MM/DD/YYYY'), 'State St', 'Bayberry Ln');
+INSERT INTO RodeOn VALUES (390503, 'WP0AB09', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Ridgewood Prk', 'W Hamilton St');
+INSERT INTO RodeOn VALUES (293308, 'JN8AR05', TO_DATE('12/21/2008', 'MM/DD/YYYY'), 'Hilldale Rd', 'Hanover Ave');
 --
--- Populate Assigned To Table
+-- Populate Stop on Route Table
 --
-INSERT INTO AssignedTo VALUES ('1FDX4P1', 1, TO_DATE('01/01/2001', 'MM/DD/YYYY'), TO_DATE('06/01/2016', 'MM/DD/YYYY'));
-INSERT INTO AssignedTo VALUES ('1FDX4P1', 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
-INSERT INTO AssignedTo VALUES (32232, 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
-INSERT INTO AssignedTo VALUES (32232, 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
-INSERT INTO AssignedTo VALUES (32232, 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
-
+INSERT INTO StopOnRoute VALUES (1, 'Greenview St', 1);
+INSERT INTO StopOnRoute VALUES (1, 'W Hamilton St', 2);
+INSERT INTO StopOnRoute VALUES (1, 'Ridgewood Prk', 3);
+INSERT INTO StopOnRoute VALUES (1, 'State St', 4);
+INSERT INTO StopOnRoute VALUES (2, 'State St', 1);
+INSERT INTO StopOnRoute VALUES (2, 'Ridgewood Prk', 2);
+INSERT INTO StopOnRoute VALUES (2, 'W Hamilton St', 3);
+INSERT INTO StopOnRoute VALUES (2, 'Greenview St', 4);
+INSERT INTO StopOnRoute VALUES (3, 'Hanover Ave', 1);
+INSERT INTO StopOnRoute VALUES (3, 'Ridgewood Prk', 2);
+INSERT INTO StopOnRoute VALUES (3, 'State St', 3);
+INSERT INTO StopOnRoute VALUES (3, 'Hilldale Rd', 4);
+INSERT INTO StopOnRoute VALUES (4, 'Hilldale Rd', 1);
+INSERT INTO StopOnRoute VALUES (4, 'State St', 2);
+INSERT INTO StopOnRoute VALUES (4, 'Ridgewood Prk', 3);
+INSERT INTO StopOnRoute VALUES (4, 'Hanover Ave', 4);
+INSERT INTO StopOnRoute VALUES (5, 'Bayberry Ln', 1);
+INSERT INTO StopOnRoute VALUES (5, 'State St', 2);
+INSERT INTO StopOnRoute VALUES (5, 'Windfall St', 3);
+INSERT INTO StopOnRoute VALUES (5, 'Rose Garden', 4);
+INSERT INTO StopOnRoute VALUES (6, 'Rose Garden', 1);
+INSERT INTO StopOnRoute VALUES (6, 'Windfall St', 2);
+INSERT INTO StopOnRoute VALUES (6, 'State St', 3);
+INSERT INTO StopOnRoute VALUES (6, 'Bayberry Ln', 4);
 
 --Driver IC Tests
 --
@@ -390,7 +412,6 @@ SELECT * FROM Stop;
 SELECT * FROM finHistory;
 SELECT * FROM SchedArrivalTime;
 SELECT * FROM RodeOn;
-SELECT * FROM AssignedTo;
 SELECT * FROM StopOnRoute;
 
 COMMIT;
