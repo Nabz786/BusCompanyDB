@@ -172,13 +172,13 @@ INSERT INTO Driver VALUES (120384921, 'David', 'Ross', 44000, 2, TO_DATE('03/28/
 --
 -- Populate the Stop Table
 --
-INSERT INTO Stop VALUES ('Greenview St', 17);
-INSERT INTO Stop VALUES ('W Hamilton St', 12);
+INSERT INTO Stop VALUES ('Greenview St', 67);
+INSERT INTO Stop VALUES ('W Hamilton St', 70);
 INSERT INTO Stop VALUES ('Ridgewood Prk', 45);
 INSERT INTO Stop VALUES ('Hanover Ave', 42);
-INSERT INTO Stop VALUES ('State St', 75);
+INSERT INTO Stop VALUES ('State St', 61);
 INSERT INTO Stop VALUES ('Hilldale Rd', 35);
-INSERT INTO Stop VALUES ('Bayberry Ln', 27);
+INSERT INTO Stop VALUES ('Bayberry Ln', 82);
 INSERT INTO Stop VALUES ('Windfall St', 35);
 INSERT INTO Stop VALUES ('Rose Garden', 60);
 --
@@ -340,6 +340,16 @@ WHERE S.stopName = St.stopName
 GROUP BY S.stopName
 HAVING COUNT(S.stopName) > 3
 ORDER BY COUNT(S.stopName);
+
+--Query 6: Correlated Subquery: find the stop that has the highest capacity along each route
+SELECT S.stopName, S.stopCapacity, R.rNum
+FROM Stop S, Route R
+WHERE S.stopCapacity = (
+	SELECT MAX(S2.stopCapacity)
+	FROM STOP S2, StopOnRoute St
+	WHERE St.rNum = R.rNum AND
+		S2.stopname = St.stopName)
+ORDER BY R.rNum;
 
 --Driver IC Tests
 --
