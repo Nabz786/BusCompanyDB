@@ -296,6 +296,17 @@ INSERT INTO StopOnRoute VALUES (6, 'Windfall St', 2);
 INSERT INTO StopOnRoute VALUES (6, 'State St', 3);
 INSERT INTO StopOnRoute VALUES (6, 'Bayberry Ln', 4);
 
+
+--Query 1: Find the Ssn, First and last name, and the Vin of all drivers who drove busses that stop at Ridgewood Prk
+SELECT D.Ssn, D.fName, D.lName, B.VIN
+FROM Driver D, Bus B, Route R, Stop S, StopOnRoute St
+WHERE D.Ssn = B.driverSsn AND
+      B.routeNum = R.rNum AND
+      R.rNum = St.rNum AND
+      St.stopName = S.stopName AND
+      S.stopName = 'Ridgewood Prk'
+ORDER BY D.Ssn;
+
 --Driver IC Tests
 --
 --Invalid Rank
