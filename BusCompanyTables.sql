@@ -351,6 +351,31 @@ WHERE S.stopCapacity = (
 		S2.stopname = St.stopName)
 ORDER BY R.rNum;
 
+--Query 7: Non-Correlated Subquery: Find the ID and last name of every rider who hasn't boarded a bus at a stop on route 2. Sort by ID.
+SELECT P.riderId, P.lName
+FROM   Rider P
+WHERE  P.riderId NOT IN
+       (SELECT O.passengerID
+        FROM   RodeOn O, Route R
+	WHERE  (O.onStop = R.startLoc OR O.onStop = R.endLoc) AND
+	       R.rNum = 2)
+ORDER BY P.riderId;
+
+--Query 9: Outer Join Query: I don't quite understand how to write one of these but I think this should be the format for this query
+SELECT some columns
+FROM tablenum1
+FULL OUTER JOIN tablenum2 ON tablenum1.column_name = tablenum2.column_name;
+			     
+--Query 10: RANK Query: Find the dense rank of driver rank 4 among all driver ranks
+SELECT DENSE_RANK (4) WITHIN GROUP
+       (ORDER BY dRank) "Rank of driver rank 4"
+FROM Driver;
+			     
+--Query 11: TOP-N Query: Find the ssn, last name, and salary of the 3 highest paid drivers
+SELECT  Ssn, lName, salary
+FROM   (SELECT * FROM Driver ORDER BY salary DESC)
+WHERE   ROWNUM < 4;
+
 --Driver IC Tests
 --
 --Invalid Rank
