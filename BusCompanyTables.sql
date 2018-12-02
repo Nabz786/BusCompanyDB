@@ -3,8 +3,10 @@ SET ECHO ON
 
 /*
 CIS-353 Bus Company Database Team 5
+Nabeel Vali, Jongin Seon, Alec Betancourt, Christian Tsoungui Nkoulou
 */
 
+--Delete all tables to prevent duplicate info 
 DROP TABLE Rider CASCADE CONSTRAINTS;
 DROP TABLE Bus CASCADE CONSTRAINTS;
 DROP TABLE Driver CASCADE CONSTRAINTS;
@@ -19,68 +21,82 @@ DROP TABLE StopOnRoute CASCADE CONSTRAINTS;
 
 CREATE TABLE Rider 
 (
-	riderId INTEGER PRIMARY KEY,
+	riderId INTEGER,
 	fName VARCHAR(15) NOT NULL,
-	lName VARCHAR(15) NOT NULL
+	lName VARCHAR(15) NOT NULL,
+	--
+	--IC_uniqueRdr: Each rider is identified by their rider ID
+	CONSTRAINT IC_uniqueRdr PRIMARY KEY (riderId)
 );
 
 CREATE TABLE Driver
 (
-	Ssn INTEGER PRIMARY KEY,
+	Ssn INTEGER,
 	fName VARCHAR(10) NOT NULL,
 	lName VARCHAR(10) NOT NULL,
 	salary INTEGER NOT NULL,
 	dRank INTEGER NOT NULL,
 	startDate DATE NOT NULL,
 	--
+	--IC_uniqueDr: Each driver is indentified by their Ssn
+	CONSTRAINT IC_uniqueDr PRIMARY KEY (Ssn),
 	--IC_ssn: Make sure that an SSN contains only 9 numbers
 --	CONSTRAINT DrIC1 CHECK(REGEXP_LIKE(Ssn,'^[[:digit:]]{9}$'))
 	--IC_rank: A drivers rank is only between 1 and 3 inclusive
 	CONSTRAINT IC_rank CHECK(NOT(dRank < 1 OR dRank > 3)),
 	--IC_ranksal: Drivers >= rank 3 must make at least $45000
 	CONSTRAINT IC_rankSal CHECK(NOT(dRank = 3 AND salary < 45000)),
-	--IC_rankmin: All salaries are at least 10000
+	--IC_rankmin: All drivers make at least $10000
 	CONSTRAINT IC_rankMin CHECK(salary >= 10000)
 );
 
 CREATE TABLE Stop
 (
-	stopName VARCHAR(20) PRIMARY KEY,
+	stopName VARCHAR(20),
 	stopCapacity INTEGER NOT NULL,
 	--
+	--IC_stName: Each stop has a unique name
+	CONSTRAINT IC_stName PRIMARY KEY (stopName),
 	--IC_stpCap: A stop must hold at least 10 people
-	--
 	CONSTRAINT IC_stpCap CHECK(stopCapacity >= 10)
 );	
 
 CREATE TABLE Route
 (
-	rNum INTEGER PRIMARY KEY,
+	rNum INTEGER,
 	startLoc VARCHAR(20) NOT NULL,
 	endLoc VARCHAR(20) NOT NULL,
 	--
-	--IC_startLoc: The start location of a route must be an existing stop
-	CONSTRAINT IC_startLoc FOREIGN KEY (startLoc) REFERENCES Stop(stopName),
-	--IC_endLoc: The end location of a route must be an existing stop
-	CONSTRAINT IC_endLoc FOREIGN KEY (endLoc) REFERENCES Stop(stopName),
-	--IC_notSame: The start and end location of a route cannot be the same
+	--IC_uniquerNum: Each route has a unique route number
+	CONSTRAINT IC_uniquerNum PRIMARY KEY (rNum),
+	--IC_startLoc: Every route has a starting location which is the first stop
+	CONSTRAINT IC_rstartLoc FOREIGN KEY (startLoc) REFERENCES Stop(stopName) 
+		ON DELETE CASCADE,
+	--IC_endLoc: Every route has an ending location which is the last stop
+	CONSTRAINT IC_rendLoc FOREIGN KEY (endLoc) REFERENCES Stop(stopName) 
+		ON DELETE CASCADE,
+	--IC_notSame: A route cannot begin and terminate at the same stop
 	CONSTRAINT IC_notSame CHECK(startLoc <> endLoc)
 );
 
 CREATE TABLE Bus
 (
-	VIN VARCHAR(7) PRIMARY KEY,
+	VIN VARCHAR(7),
 	numSeats INTEGER NOT NULL,
 	driverSsn INTEGER NOT NULL,
 	routeNum INTEGER NOT NULL,
 	--
-	--fKey1: A bus is assigned a driver from the list of active drivers
-	CONSTRAINT fKey1 FOREIGN KEY (driverSsn) REFERENCES Driver(Ssn) ON DELETE CASCADE,
+	--IC_bVin: Every bus is identified by its VIN #
+	CONSTRAINT IC_bVin PRIMARY KEY (VIN),
+	--IC_bDriv: A bus is assigned a unique driver
+	CONSTRAINT IC_bDriv FOREIGN KEY (driverSsn) REFERENCES Driver(Ssn) 
+		ON DELETE CASCADE,
 	--IC_oneDriver: An active bus only has one driver 
 	CONSTRAINT IC_oneDriver UNIQUE (driverSsn),
 	--ic_oneRoute: A bus is assigned to one route only
-	CONSTRAINT IC_oneRoute FOREIGN KEY (routeNum) REFERENCES Route(rNum),
-	--IC_seatMin All Busses have a minimum of 30
+	CONSTRAINT IC_oneRoute FOREIGN KEY (routeNum) REFERENCES Route(rNum) 
+		ON DELETE CASCADE,
+	--IC_seatMin All Busses have a minimum of 30 seats
 	CONSTRAINT IC_seatMin CHECK(numSeats >= 30)
 );
 
@@ -92,11 +108,12 @@ CREATE TABLE FinHistory
 	actRev DECIMAL(7,2) NOT NULL,
 	expenses DECIMAL(7,2) NOT NULL,
 	--
-	--pKey1: A financial history can be obtained for the same route on different days
-	CONSTRAINT pKey1 PRIMARY KEY (historyDate, routeNum),
-	--fKey2: A route must exist to have a financial history
-	CONSTRAINT fKey2 FOREIGN KEY (routeNum) REFERENCES Route(rNum),
-	--IC_posRev: projectd, actual revenues, and expense must be positive numbers
+	--IC_rHist: A financial history can be obtained for the same route on different days
+	CONSTRAINT IC_rHist PRIMARY KEY (historyDate, routeNum),
+	--IC_routeEx: A financial history can only be created for an existing route
+	CONSTRAINT IC_routeEx FOREIGN KEY (routeNum) REFERENCES Route(rNum) 
+		ON DELETE CASCADE,
+	--IC_posRev: Numeric values for revenues must be positive
 	CONSTRAINT IC_posRev CHECK(projRev >= 0 AND actRev >= 0 AND expenses >= 0)
 );
 
@@ -105,29 +122,35 @@ CREATE TABLE SchedArrivalTime
 	schedArrivalTime VARCHAR(16),
 	stopName VARCHAR(20),
 	--
-	--pKey2: A stop may have multiple bus arrivals
-	CONSTRAINT pKey2 PRIMARY KEY (schedArrivalTime, stopName),
-	--fKey3: A stop must be an existing stop to have scheduled busses
-	CONSTRAINT fKey3 FOREIGN KEY (stopName) REFERENCES Stop(stopName)
+	--IC_stopTime: A stop can have bus arrivals at different times
+	CONSTRAINT IC_stopTime PRIMARY KEY (schedArrivalTime, stopName),
+	--IC_stopExist: A bus can only stop at an existing stop
+	CONSTRAINT IC_stopExist FOREIGN KEY (stopName) REFERENCES Stop(stopName) 
+		ON DELETE CASCADE
 );
 
 CREATE TABLE RodeOn
 (
 	passengerID INTEGER,
 	busVin VARCHAR(7),
-	CONSTRAINT pKey3 PRIMARY KEY (passengerID, busVin),
 	rideDate DATE NOT NULL,
 	onStop VARCHAR(20) NOT NULL,
 	offStop VARCHAR(20) NOT NULL,
 	--
+	-- IC_bRide: A passenger can ride multiple busses
+	CONSTRAINT IC_bRide PRIMARY KEY (passengerID, busVin),
 	--fKey_pExists: a passenger must be someone who has ridden a bus
-	CONSTRAINT fKey_pExists FOREIGN KEY (passengerID) REFERENCES Rider(riderId),
+	CONSTRAINT fKey_pExists FOREIGN KEY (passengerID) REFERENCES Rider(riderId) 
+		ON DELETE CASCADE,
 	--fKey_bExists: a bus must be an existing bus
-	CONSTRAINT fKey_bExists FOREIGN KEY (busVin) REFERENCES Bus(Vin),
+	CONSTRAINT fKey_bExists FOREIGN KEY (busVin) REFERENCES Bus(Vin) 
+		ON DELETE SET NULL,
 	--fKey_stpExists: The stop the passenger boarded the bus must exist
-	CONSTRAINT fKey_stpExists FOREIGN KEY (onStop) REFERENCES Stop(stopName),
+	CONSTRAINT fKey_stpExists FOREIGN KEY (onStop) REFERENCES Stop(stopName) 
+		ON DELETE CASCADE,
 	--fKey_ostpExists: The stpo where the passenger exited must exist
 	CONSTRAINT fKey_oStpExists FOREIGN KEY (offStop) REFERENCES Stop(stopName)
+		ON DELETE CASCADE
 );
 
 CREATE TABLE StopOnRoute
@@ -136,13 +159,15 @@ CREATE TABLE StopOnRoute
 	stopName VARCHAR(20),
 	stopSequence Integer NOT NULL,
 	--
-	--pKey5: A stop can be assigned to multiple routes
-	CONSTRAINT pKey5 PRIMARY KEY (rNum, stopName),
-	--fKey_rtExists: a stop must be assigned to an existing route
-	CONSTRAINT fKey_rtExists FOREIGN KEY (rNum) REFERENCES Route(rNum),
-	--fKey_stp1Exists: A route can only be assigned existing stops
-	CONSTRAINT fKey_stp1Exists FOREIGN KEY (stopName) REFERENCES Stop(stopName),
-	--IC_stopSeq: A stop sequence value cannot be negative
+	--IC_stpOnR: A stop can be assigned to multiple routes
+	CONSTRAINT IC_stpOnR PRIMARY KEY (rNum, stopName),
+	--IC_rtExists: a stop must be assigned to an existing route
+	CONSTRAINT IC_rtExists FOREIGN KEY (rNum) REFERENCES Route(rNum) 
+		ON DELETE CASCADE,
+	--IC_stp1Exists: A route can only be assigned existing stops
+	CONSTRAINT IC_stp1Exists FOREIGN KEY (stopName) REFERENCES Stop(stopName)
+		ON DELETE CASCADE,
+	--IC_stopSeq: A stop sequence value must be positive
 	CONSTRAINT IC_stopSeq CHECK(stopSequence > 0)
 );	
 
@@ -260,6 +285,7 @@ INSERT INTO SchedArrivalTime Values ('06:56am', 'Bayberry Ln');
 INSERT INTO RodeOn VALUES (965574, '1FDX4P1', TO_DATE('02/12/2002', 'MM/DD/YYYY'), 'Greenview St', 'Ridgewood Prk');
 INSERT INTO RodeOn VALUES (990311, '1GCJC39', TO_DATE('04/25/2007', 'MM/DD/YYYY'), 'Hanover Ave', 'State St');
 INSERT INTO RodeOn VALUES (120746, '2BVBF34', TO_DATE('07/19/2015', 'MM/DD/YYYY'), 'Bayberry Ln', 'Rose Garden');
+INSERT INTO RodeOn VALUES (120746, '1X2V067', TO_DATE('07/19/2015', 'MM/DD/YYYY'), 'Rose Garden', 'Windfall St');
 INSERT INTO RodeOn VALUES (526975, '1X2V067', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'Windfall St', 'State St');
 INSERT INTO RodeOn VALUES (526975, 'WP0AB09', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'State St', 'W Hamilton St');
 INSERT INTO RodeOn VALUES (193044, '1GCJC39', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'Ridgewood Prk', 'State St');
@@ -299,8 +325,26 @@ INSERT INTO StopOnRoute VALUES (6, 'Windfall St', 2);
 INSERT INTO StopOnRoute VALUES (6, 'State St', 3);
 INSERT INTO StopOnRoute VALUES (6, 'Bayberry Ln', 4);
 
+SET FEEDBACK ON
+COMMIT;
 
---Query 1: Find the Ssn, First and last name, and the Vin of all drivers who drove busses that stop at Ridgewood Prk
+SELECT * FROM Rider;
+SELECT * FROM Driver;
+SELECT * FROM Bus;
+SELECT * FROM Route;
+SELECT * FROM Stop;
+SELECT * FROM finHistory;
+SELECT * FROM SchedArrivalTime;
+SELECT * FROM RodeOn;
+SELECT * FROM StopOnRoute;
+
+
+
+
+
+--Query 1: Join involving at least 4 relations
+--Find the Ssn, First and last name, andthe Vin of all drivers who drove busses that stop at Ridgewood Prk
+--Order by driver Ssn
 SELECT D.Ssn, D.fName, D.lName, B.VIN
 FROM Driver D, Bus B, Route R, Stop S, StopOnRoute St
 WHERE D.Ssn = B.driverSsn AND
@@ -310,13 +354,15 @@ WHERE D.Ssn = B.driverSsn AND
       S.stopName = 'Ridgewood Prk'
 ORDER BY D.Ssn;
 
---Query 2: Self Join: Find all pairs of drivers who have the same rank
+--Query 2: Self Join:
+--Find all pairs of drivers who have the same rank
 SELECT D1.fName, D1.lName, D1.dRank, D2.fName, D2.lName, D2.dRank
 FROM Driver D1, Driver D2
 WHERE D1.dRank = D2.dRank AND
       D1.Ssn < D2.Ssn;
 
---Query 3: Union: Find all drivers who started on or after 2006 and drive busses with more than 40 seats
+--Query 3: Union, Intersect, Minus
+--Find all drivers who started on or after 2006 and drive busses with more than 40 seats
 SELECT D.Ssn, D.startDate, B.numSeats
 FROM Driver D, Bus B
 WHERE D.Ssn = B.driverSsn AND
@@ -336,7 +382,9 @@ WHERE R.rNum = F.routeNum AND
        historyDate < TO_DATE('01/01/2013', 'MM/DD/YYYY'))
 GROUP BY R.rNum;
 
---Query 5: Group order by and having in one query: Find all stops that serve more than 3 routes
+--Query 5: Group order by and having in one query:
+--Find all stops that serve more than 3 routes
+--Order by the number of stops
 SELECT S.stopName, COUNT(S.stopName)
 FROM StopOnRoute St, Stop S
 WHERE S.stopName = St.stopName
@@ -344,17 +392,21 @@ GROUP BY S.stopName
 HAVING COUNT(S.stopName) > 3
 ORDER BY COUNT(S.stopName);
 
---Query 6: Correlated Subquery: find the stop that has the highest capacity along each route
+--Query 6: Correlated Subquery:
+--find the stop that has the highest capacity along each route
+--Order by the route number
 SELECT S.stopName, S.stopCapacity, R.rNum
 FROM Stop S, Route R
 WHERE S.stopCapacity = (
 	SELECT MAX(S2.stopCapacity)
 	FROM STOP S2, StopOnRoute St
 	WHERE St.rNum = R.rNum AND
-		S2.stopname = St.stopName)
+              S2.stopname = St.stopName)
 ORDER BY R.rNum;
 
---Query 7: Non-Correlated Subquery: Find the ID and last name of every rider who hasn't boarded a bus at a stop on route 2. Sort by ID.
+--Query 7: Non-Correlated Subquery: 
+--Find the ID and last name of every rider who hasn't boarded a bus at a stop on route 2. 
+--Order by the Rider's Id
 SELECT P.riderId, P.lName
 FROM  Rider P
 WHERE P.riderId NOT IN
@@ -380,137 +432,45 @@ WHERE NOT EXISTS ((SELECT B.VIN
 			  St.stopName = 'Rose Garden'));
 
 --Query 9: Outer Join Query: Find the first name and last name of all the drivers and the VIN of the busses they drive
+--Order by the Driver's Ssn
 SELECT D.fName, D.lName, B.VIN
 FROM Driver D LEFT OUTER JOIN Bus B ON B.driverSsn = D.Ssn
 ORDER BY D.Ssn;
 			     
---Query 10: RANK Query: Find the dense rank of driver rank 4 among all driver ranks
+--Query 10: RANK Query: Find the rank of a stop with capacity 54 among all the other stops
 SELECT RANK (54) WITHIN GROUP
        (ORDER BY stopCapacity) "Rank of Stop with Capacity 54"
 FROM Stop;
 			     
 --Query 11: TOP-N Query: Find the ssn, last name, and salary of the 3 highest paid drivers
-SELECT  Ssn, lName, salary
-FROM   (SELECT * FROM Driver ORDER BY salary DESC)
-WHERE   ROWNUM < 4;
+SELECT Ssn, lName, salary
+FROM (SELECT * FROM Driver ORDER BY salary DESC)
+WHERE ROWNUM < 4;
 
---Driver IC Tests
---
---Invalid Rank
---INSERT INTO Driver VALUES (443243, 'Kevin', 'Jones', 45000, 0, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
---Invalid Rank
---INSERT INTO Driver VALUES (112324354, 'Kevin', 'Jones', 45000, 6, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
---Invalid salary
---INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 1000, 2, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
---Valid
---INSERT INTO Driver VALUES (947374938, 'Kevin', 'Jones', 45000, 5, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
---Invalid Salary
---INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 4, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
---Valid
---INSERT INTO Driver VALUES (243243, 'Kevin', 'Jones', 45000, 4, TO_DATE('08/09/2012', 'DD/MM/YYYY'));
---
---Bus IC Tests
---
---Valid
---INSERT INTO Bus VALUES (1234433, 64, 947374938);
---Valid
---INSERT INTO BUS VALUES (32232, 50, 243243);
---Invalid: referencing a driver that doesnt exist
---INSERT INTO BUS VALUES (243243, 50, 123);
---Invalid: Num of seats is less than min of 30
---INSERT INTO BUS VALUES (234, 40, 947374938);
---
---Route IC Tests
---
---INSERT INTO Stop VALUES ('123 W 5th St', 25);
---INSERT INTO Stop VALUES ('111 Michigan St', 50);
---INSERT INTO Stop VALUES ('Monroe Ave', 55);
---Valid
---INSERT INTO Route VALUES (5, '123 W 5th St', 'Monroe Ave');
---Valid
---INSERT INTO Route VALUES (7, '123 W 5th St', '111 Michigan St');
---Invalid: Route numbers cannot be the same
---INSERT INTO Route VALUES (5, 'Monroe Ave', '111 Michigan St');
---Invalid: Start and end stops cannot be the same
---INSERT INTO Route Values (6, 'Monroe Ave', 'Monroe Ave');
---
---FinHistory IC Tests
---
---Valid
---INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, 800, 12);
---Invalid: Two fin histories for a route on same day
---INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, 800, 12);
---Invalid: Negative values 
---INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, -1000, 800, -12);
---Invalid Negative Values
---INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 5, 1000, -800, 12);
---Invalid: Non-existant route
---INSERT INTO FinHistory VALUES(TO_DATE('08/09/2014', 'MM/DD/YYYY'), 999, 1000, 800, 12);
---
---SchedArrivalTime IC Tests
---
---Valid
---INSERT INTO SchedArrivalTime VALUES ('09:30pm', 'Monroe Ave');
---Valid
---INSERT INTO SchedArrivalTime VALUES ('04:30pm', '111 Michigan St');
---Invalid: No duplicate times for a stop
---INSERT INTO SchedArrivalTime VALUES ('04:30pm', '111 Michigan St');
---Invalid: A stop must exist to have a scheduled bus stop time
---INSERT INTO SchedArrivalTime VALUES ('04:35pm', '123 Allendale Ave');
---
---RodeOn IC Tests
---
---Valid
---INSERT INTO RodeOn VALUES (123, 1234433, TO_DATE('12/12/2015', 'MM/DD/YYYY'), '123 W 5th St', 'Monroe Ave');
---Valid
---INSERT INTO RodeOn VALUES (222, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
---Invalid: Non-Existant rider
---INSERT INTO RodeOn VALUES (999, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
---Invalid Non-Existant bus
---INSERT INTO RodeOn VALUES (222, 8373723, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '111 Michigan St');
---Invalid: Non-Exsitant on stop
---INSERT INTO RodeOn VALUES (123, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), '123 Ave', '111 Michigan St');
---Invalid: Non-Existant off stop
---INSERT INTO RodeOn VALUES (444, 32232, TO_DATE('06/12/2015', 'MM/DD/YYYY'), 'Monroe Ave', '555 Michigan St');
---
---AssignedTo IC Tests
---
---Valid 
---INSERT INTO AssignedTo VALUES (32232, 5, TO_DATE('06/12/2012', 'MM/DD/YYYY'), TO_DATE('07/12/2012', 'MM/DD/YYYY'));
---Valid
---INSERT INTO AssignedTo VALUES (32232, 7, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
---Invalid: Bus Doesnt exist
---INSERT INTO AssignedTo VALUES (32, 7, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
---Invalid: Route does not exist
---INSERT INTO AssignedTo VALUES (1234433, 90, TO_DATE('07/12/2012', 'MM/DD/YYYY'), TO_DATE('08/12/2012', 'MM/DD/YYYY'));
---Invalid: Removed date before assigned date
---INSERT INTO AssignedTo VALUES (32232, 7, TO_DATE('04/12/2012', 'MM/DD/YYYY'), TO_DATE('03/12/2012', 'MM/DD/YYYY'));
---
---StopOnRoute IC Tests
---
---Valid
---INSERT INTO StopOnRoute VALUES (5, 'Monroe Ave', 1);
---Valid
---INSERT INTO StopOnRoute VALUES (7, '111 Michigan St', 10);
---Invalid: Non-Existant route
---INSERT INTO StopOnRoute VALUES (20, '111 Michigan St', 20);
---Invalid: Non-Existant Stop
---INSERT INTO StopOnRoute VALUES (5, '12312 Test St', 2);
---Invalid: Negative stop sequence value
---INSERT INTO StopOnRoute VALUES (5, '111 Michigan St', -2);
 
-SET FEEDBACK ON
-COMMIT;
 
---SELECT * FROM Rider;
---SELECT * FROM Driver;
---SELECT * FROM Bus;
---SELECT * FROM Route;
---SELECT * FROM Stop;
---SELECT * FROM finHistory;
---SELECT * FROM SchedArrivalTime;
---SELECT * FROM RodeOn;
---SELECT * FROM StopOnRoute;
+
+
+--
+--IC Tests
+--
+
+--Constraint 1 Tests: IC_uniqueRnum, No duplicate route numbers
+INSERT INTO Route VALUES (4, 'Rose Garden', 'State St');
+INSERT INTO Route VALUES (1, 'State St', 'Ridgewood Prk');
+
+--Constraint 2 Tests: IC_bDriv, A driver does not exist
+INSERT INTO BUS VALUES ('243243', 50, 938473618, 6);
+INSERT INTO BUS VALUES ('1ER93IF', 65, 453627483, 5);
+
+--Constraint 3 Test: IC_rank, A drivers rank can only be between 1 and 3 inclusive
+INSERT INTO Driver VALUES (948374636, 'Kevin', 'Jones', 45000, 6, TO_DATE('08/09/2002', 'DD/MM/YYYY'));
+INSERT INTO Driver VALUES (373649382, 'Adam', 'Smith', 45000, 0, TO_DATE('08/09/2010', 'DD/MM/YYYY'));
+
+--Constraint 4 Test: IC_rankSal, A driver of rank = 3, must have a salary >= $45000
+INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 3, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
+INSERT INTO Driver VALUES (293742343, 'Michelle', 'Brown', 12000, 3, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
+
 
 COMMIT;
 
