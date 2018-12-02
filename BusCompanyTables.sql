@@ -160,6 +160,7 @@ INSERT INTO Rider VALUES (193044, 'Angela', 'Peterson');
 INSERT INTO Rider VALUES (128525, 'Phillip', 'Jones');
 INSERT INTO Rider VALUES (390503, 'Jack', 'Thompson');
 INSERT INTO Rider VALUES (293308, 'Sharon', 'Garcia');
+INSERT INTO Rider VALUES (432432, 'Jerome', 'Smith');
 --
 -- Populate the Driver Table
 --
@@ -268,6 +269,8 @@ INSERT INTO RodeOn VALUES (128525, 'WP0AB09', TO_DATE('09/15/2009', 'MM/DD/YYYY'
 INSERT INTO RodeOn VALUES (390503, '1GCJC39', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Hanover Ave', 'Ridgewood Prk');
 INSERT INTO RodeOn VALUES (390503, 'WP0AB09', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Ridgewood Prk', 'W Hamilton St');
 INSERT INTO RodeOn VALUES (293308, 'JN8AR05', TO_DATE('12/21/2008', 'MM/DD/YYYY'), 'Hilldale Rd', 'Hanover Ave');
+INSERT INTO RodeOn VALUES (432432, '2BVBF34', TO_DATE('06/19/2008', 'MM/DD/YYYY'), 'Rose Garden', 'Bayberry Ln');
+INSERT INTO RodeOn VALUES (432432, '1X2V067', TO_DATE('06/19/2010', 'MM/DD/YYYY'), 'Bayberry Ln', 'Rose Garden');
 --
 -- Populate Stop on Route Table
 --
@@ -353,23 +356,38 @@ ORDER BY R.rNum;
 
 --Query 7: Non-Correlated Subquery: Find the ID and last name of every rider who hasn't boarded a bus at a stop on route 2. Sort by ID.
 SELECT P.riderId, P.lName
-FROM   Rider P
-WHERE  P.riderId NOT IN
-       (SELECT O.passengerID
-        FROM   RodeOn O, Route R
-	WHERE  (O.onStop = R.startLoc OR O.onStop = R.endLoc) AND
-	       R.rNum = 2)
+FROM  Rider P
+WHERE P.riderId NOT IN
+       (SELECT DISTINCT O.passengerID
+        FROM RodeOn O, StopOnRoute St
+	WHERE St.rNum = 2 AND
+	     (O.onStop = St.stopName))
 ORDER BY P.riderId;
 
---Query 9: Outer Join Query: I don't quite understand how to write one of these but I think this should be the format for this query
-SELECT some columns
-FROM tablenum1
-FULL OUTER JOIN tablenum2 ON tablenum1.column_name = tablenum2.column_name;
+--Query 8: Division Query: Find the riderID, first and last name of all the riders who rode on all busses that stop at rose garden
+SELECT R.riderId, R.fName, R.lName
+FROM Rider R
+WHERE NOT EXISTS ((SELECT B.VIN 
+		   FROM Bus B, StopOnRoute St
+		   WHERE B.routeNum = St.rNum AND
+			 St.stopName = 'Rose Garden')
+		   MINUS
+		   (SELECT B.VIN
+	            FROM Bus B, StopOnRoute St, RodeOn P
+		    WHERE P.passengerId = R.riderId AND
+		          P.busVin = B.VIN AND
+			  B.routeNum = St.rNum AND
+			  St.stopName = 'Rose Garden'));
+
+--Query 9: Outer Join Query: Find the first name and last name of all the drivers and the VIN of the busses they drive
+SELECT D.fName, D.lName, B.VIN
+FROM Driver D LEFT OUTER JOIN Bus B ON B.driverSsn = D.Ssn
+ORDER BY D.Ssn;
 			     
 --Query 10: RANK Query: Find the dense rank of driver rank 4 among all driver ranks
-SELECT DENSE_RANK (4) WITHIN GROUP
-       (ORDER BY dRank) "Rank of driver rank 4"
-FROM Driver;
+SELECT RANK (54) WITHIN GROUP
+       (ORDER BY stopCapacity) "Rank of Stop with Capacity 54"
+FROM Stop;
 			     
 --Query 11: TOP-N Query: Find the ssn, last name, and salary of the 3 highest paid drivers
 SELECT  Ssn, lName, salary
