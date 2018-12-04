@@ -1,0 +1,904 @@
+SQL> 
+SQL> /*
+SQL> CIS-353 Bus Company Database Team 5
+SQL> Nabeel Vali, Jongin Seon, Alec Betancourt, Christian Tsoungui Nkoulou
+SQL> */
+SQL> 
+SQL> --Delete all tables to prevent duplicate info
+SQL> DROP TABLE Rider CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Bus CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Driver CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Route CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE Stop CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE FinHistory CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE SchedArrivalTime CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE RodeOn CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> DROP TABLE StopOnRoute CASCADE CONSTRAINTS;
+
+Table dropped.
+
+SQL> 
+SQL> 
+SQL> CREATE TABLE Rider
+  2  (
+  3  	     riderId INTEGER,
+  4  	     fName VARCHAR(15) NOT NULL,
+  5  	     lName VARCHAR(15) NOT NULL,
+  6  	     --
+  7  	     --IC_uniqueRdr: Each rider is identified by their rider ID
+  8  	     CONSTRAINT IC_uniqueRdr PRIMARY KEY (riderId)
+  9  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE Driver
+  2  (
+  3  	     Ssn INTEGER,
+  4  	     fName VARCHAR(10) NOT NULL,
+  5  	     lName VARCHAR(10) NOT NULL,
+  6  	     salary INTEGER NOT NULL,
+  7  	     dRank INTEGER NOT NULL,
+  8  	     --
+  9  	     --IC_uniqueDr: Each driver is indentified by their Ssn
+ 10  	     CONSTRAINT IC_uniqueDr PRIMARY KEY (Ssn),
+ 11  	     --IC_rank: A drivers rank is only between 1 and 3 inclusive
+ 12  	     CONSTRAINT IC_rank CHECK(NOT(dRank < 1 OR dRank > 3)),
+ 13  	     --IC_ranksal: Drivers >= rank 3 must make at least $45000
+ 14  	     CONSTRAINT IC_rankSal CHECK(NOT(dRank = 3 AND salary < 45000)),
+ 15  	     --IC_rankmin: All drivers make at least $10000
+ 16  	     CONSTRAINT IC_rankMin CHECK(salary >= 10000)
+ 17  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE Stop
+  2  (
+  3  	     stopName VARCHAR(20),
+  4  	     stopCapacity INTEGER NOT NULL,
+  5  	     --
+  6  	     --IC_stName: Each stop has a unique name
+  7  	     CONSTRAINT IC_stName PRIMARY KEY (stopName),
+  8  	     --IC_stpCap: A stop must hold at least 10 people
+  9  	     CONSTRAINT IC_stpCap CHECK(stopCapacity >= 10)
+ 10  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE Route
+  2  (
+  3  	     rNum INTEGER,
+  4  	     startLoc VARCHAR(20) NOT NULL,
+  5  	     endLoc VARCHAR(20) NOT NULL,
+  6  	     --
+  7  	     --IC_uniquerNum: Each route has a unique route number
+  8  	     CONSTRAINT IC_uniquerNum PRIMARY KEY (rNum),
+  9  	     --IC_startLoc: Every route has a starting location which is the first stop
+ 10  	     CONSTRAINT IC_rstartLoc FOREIGN KEY (startLoc) REFERENCES Stop(stopName)
+ 11  		     ON DELETE CASCADE,
+ 12  	     --IC_endLoc: Every route has an ending location which is the last stop
+ 13  	     CONSTRAINT IC_rendLoc FOREIGN KEY (endLoc) REFERENCES Stop(stopName)
+ 14  		     ON DELETE CASCADE,
+ 15  	     --IC_notSame: A route cannot begin and terminate at the same stop
+ 16  	     CONSTRAINT IC_notSame CHECK(startLoc <> endLoc)
+ 17  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE Bus
+  2  (
+  3  	     VIN VARCHAR(7),
+  4  	     numSeats INTEGER NOT NULL,
+  5  	     driverSsn INTEGER NOT NULL,
+  6  	     routeNum INTEGER NOT NULL,
+  7  	     --
+  8  	     --IC_bVin: Every bus is identified by its VIN #
+  9  	     CONSTRAINT IC_bVin PRIMARY KEY (VIN),
+ 10  	     --IC_bDriv: A bus is assigned a unique driver
+ 11  	     CONSTRAINT IC_bDriv FOREIGN KEY (driverSsn) REFERENCES Driver(Ssn)
+ 12  		     ON DELETE CASCADE,
+ 13  	     --IC_oneDriver: An active bus only has one driver
+ 14  	     CONSTRAINT IC_oneDriver UNIQUE (driverSsn),
+ 15  	     --ic_oneRoute: A bus is assigned to one route only
+ 16  	     CONSTRAINT IC_oneRoute FOREIGN KEY (routeNum) REFERENCES Route(rNum)
+ 17  		     ON DELETE CASCADE,
+ 18  	     --IC_seatMin All Busses have a minimum of 30 seats
+ 19  	     CONSTRAINT IC_seatMin CHECK(numSeats >= 30)
+ 20  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE FinHistory
+  2  (
+  3  	     historyDate DATE,
+  4  	     routeNum INTEGER,
+  5  	     projRev DECIMAL(7,2) NOT NULL,
+  6  	     actRev DECIMAL(7,2) NOT NULL,
+  7  	     expenses DECIMAL(7,2) NOT NULL,
+  8  	     --
+  9  	     --IC_rHist: A financial history can be obtained for the same route on different days
+ 10  	     CONSTRAINT IC_rHist PRIMARY KEY (historyDate, routeNum),
+ 11  	     --IC_routeEx: A financial history can only be created for an existing route
+ 12  	     CONSTRAINT IC_routeEx FOREIGN KEY (routeNum) REFERENCES Route(rNum)
+ 13  		     ON DELETE CASCADE,
+ 14  	     --IC_posRev: Numeric values for revenues must be positive
+ 15  	     CONSTRAINT IC_posRev CHECK(projRev >= 0 AND actRev >= 0 AND expenses >= 0)
+ 16  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE SchedArrivalTime
+  2  (
+  3  	     schedArrivalTime VARCHAR(16),
+  4  	     stopName VARCHAR(20),
+  5  	     --
+  6  	     --IC_stopTime: A stop can have bus arrivals at different times
+  7  	     CONSTRAINT IC_stopTime PRIMARY KEY (schedArrivalTime, stopName),
+  8  	     --IC_stopExist: A bus can only stop at an existing stop
+  9  	     CONSTRAINT IC_stopExist FOREIGN KEY (stopName) REFERENCES Stop(stopName)
+ 10  		     ON DELETE CASCADE
+ 11  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE RodeOn
+  2  (
+  3  	     passengerID INTEGER,
+  4  	     busVin VARCHAR(7),
+  5  	     rideDate DATE NOT NULL,
+  6  	     onStop VARCHAR(20) NOT NULL,
+  7  	     offStop VARCHAR(20) NOT NULL,
+  8  	     --
+  9  	     -- IC_bRide: A passenger can ride multiple busses
+ 10  	     CONSTRAINT IC_bRide PRIMARY KEY (passengerID, busVin),
+ 11  	     --fKey_pExists: a passenger must be someone who has ridden a bus
+ 12  	     CONSTRAINT fKey_pExists FOREIGN KEY (passengerID) REFERENCES Rider(riderId)
+ 13  		     ON DELETE CASCADE,
+ 14  	     --fKey_bExists: a bus must be an existing bus
+ 15  	     CONSTRAINT fKey_bExists FOREIGN KEY (busVin) REFERENCES Bus(Vin)
+ 16  		     ON DELETE SET NULL,
+ 17  	     --fKey_stpExists: The stop the passenger boarded the bus must exist
+ 18  	     CONSTRAINT fKey_stpExists FOREIGN KEY (onStop) REFERENCES Stop(stopName)
+ 19  		     ON DELETE CASCADE,
+ 20  	     --fKey_ostpExists: The stpo where the passenger exited must exist
+ 21  	     CONSTRAINT fKey_oStpExists FOREIGN KEY (offStop) REFERENCES Stop(stopName)
+ 22  		     ON DELETE CASCADE
+ 23  );
+
+Table created.
+
+SQL> 
+SQL> CREATE TABLE StopOnRoute
+  2  (
+  3  	     rNum INTEGER,
+  4  	     stopName VARCHAR(20),
+  5  	     stopSequence Integer NOT NULL,
+  6  	     --
+  7  	     --IC_stpOnR: A stop can be assigned to multiple routes
+  8  	     CONSTRAINT IC_stpOnR PRIMARY KEY (rNum, stopName),
+  9  	     --IC_rtExists: a stop must be assigned to an existing route
+ 10  	     CONSTRAINT IC_rtExists FOREIGN KEY (rNum) REFERENCES Route(rNum)
+ 11  		     ON DELETE CASCADE,
+ 12  	     --IC_stp1Exists: A route can only be assigned existing stops
+ 13  	     CONSTRAINT IC_stp1Exists FOREIGN KEY (stopName) REFERENCES Stop(stopName)
+ 14  		     ON DELETE CASCADE,
+ 15  	     --IC_stopSeq: A stop sequence value must be positive
+ 16  	     CONSTRAINT IC_stopSeq CHECK(stopSequence > 0)
+ 17  );
+
+Table created.
+
+SQL> 
+SQL> 
+SQL> SET FEEDBACK OFF
+SQL> 
+SQL> --
+SQL> -- Populate the Riders Table
+SQL> --
+SQL> INSERT INTO Rider VALUES (965574, 'Judith', 'Edwards');
+SQL> INSERT INTO Rider VALUES (990311, 'Alan', 'Brown');
+SQL> INSERT INTO Rider VALUES (120746, 'Jesse', 'Simmons');
+SQL> INSERT INTO Rider VALUES (526975, 'Ronald', 'Hall');
+SQL> INSERT INTO Rider VALUES (193044, 'Angela', 'Peterson');
+SQL> INSERT INTO Rider VALUES (128525, 'Phillip', 'Jones');
+SQL> INSERT INTO Rider VALUES (390503, 'Jack', 'Thompson');
+SQL> INSERT INTO Rider VALUES (293308, 'Sharon', 'Garcia');
+SQL> INSERT INTO Rider VALUES (432432, 'Jerome', 'Smith');
+SQL> --
+SQL> -- Populate the Driver Table
+SQL> --
+SQL> INSERT INTO Driver VALUES (685320372, 'Lillian', 'Bryant', 25000, 1);
+SQL> INSERT INTO Driver VALUES (157729572, 'Debra', 'Cooper', 49000, 3);
+SQL> INSERT INTO Driver VALUES (868142440, 'Justin', 'Ward', 55000, 3);
+SQL> INSERT INTO Driver VALUES (222656890, 'Larry', 'Taylor', 23000, 1);
+SQL> INSERT INTO Driver VALUES (897461302, 'James', 'Bush', 51000, 3);
+SQL> INSERT INTO Driver VALUES (120384921, 'David', 'Ross', 44000, 2);
+SQL> --
+SQL> -- Populate the Stop Table
+SQL> --
+SQL> INSERT INTO Stop VALUES ('Greenview St', 67);
+SQL> INSERT INTO Stop VALUES ('W Hamilton St', 70);
+SQL> INSERT INTO Stop VALUES ('Ridgewood Prk', 45);
+SQL> INSERT INTO Stop VALUES ('Hanover Ave', 42);
+SQL> INSERT INTO Stop VALUES ('State St', 61);
+SQL> INSERT INTO Stop VALUES ('Hilldale Rd', 35);
+SQL> INSERT INTO Stop VALUES ('Bayberry Ln', 82);
+SQL> INSERT INTO Stop VALUES ('Windfall St', 35);
+SQL> INSERT INTO Stop VALUES ('Rose Garden', 60);
+SQL> --
+SQL> -- Populate the Route Table
+SQL> --
+SQL> INSERT INTO Route VALUES (1, 'Greenview St', 'State St');
+SQL> INSERT INTO Route VALUES (2, 'State St', 'Greenview St');
+SQL> INSERT INTO Route VALUES (3, 'Hanover Ave', 'Hilldale Rd');
+SQL> INSERT INTO Route VALUES (4, 'Hilldale Rd', 'Hanover Ave');
+SQL> INSERT INTO Route VALUES (5, 'Bayberry Ln', 'Rose Garden');
+SQL> INSERT INTO Route VALUES (6, 'Rose Garden', 'Bayberry Ln');
+SQL> --
+SQL> -- Populate the bus table
+SQL> --
+SQL> INSERT INTO Bus VALUES ('1FDX4P1', 30, 685320372, 1);
+SQL> INSERT INTO Bus VALUES ('WP0AB09', 60, 157729572, 2);
+SQL> INSERT INTO Bus VALUES ('1GCJC39', 80, 868142440, 3);
+SQL> INSERT INTO Bus VALUES ('JN8AR05', 70, 222656890, 4);
+SQL> INSERT INTO Bus VALUES ('2BVBF34', 55, 897461302, 5);
+SQL> INSERT INTO Bus VALUES ('1X2V067', 40, 120384921, 6);
+SQL> --
+SQL> -- Populate Financial Histories for routes
+SQL> --
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 1, 13500.97, 14074.12, 1200.98);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 2, 12534.66, 12812.22, 3212.65);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2012', 'MM/DD/YYYY'), 3, 9876.43, 12349.87, 983.12);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 4, 10543.43, 11134.87, 1189.12);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 5, 11645.23, 12218.92, 3012.14);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 6, 13453.43, 12345.87, 1083.32);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 1, 18798.40, 13206.22, 1987.76);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 2, 19723.33, 15844.39, 4099.30);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 3, 14387.86, 13723.22, 3722.34);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 4, 12134.12, 14927.41, 2022.45);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 5, 11346.23, 12328.67, 3454.14);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 6, 10234.43, 10321.82, 1022.75);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 1, 13356.23, 16899.87, 2456.55);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 2, 15998.71, 13822.25, 4092.32);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2009', 'MM/DD/YYYY'), 3, 10654.12,8906.11, 1231.21);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2011', 'MM/DD/YYYY'), 4, 8934.32, 9908.32, 1119.39);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2010', 'MM/DD/YYYY'), 5, 11747.42, 10901.37, 2909.23);
+SQL> INSERT INTO FinHistory VALUES(TO_DATE('08/09/2008', 'MM/DD/YYYY'), 6, 7986.87, 9903.38, 999.34);
+SQL> --
+SQL> -- Populate SchedArrivalTime Table
+SQL> --
+SQL> --R1
+SQL> INSERT INTO SchedArrivalTime VALUES ('06:00am', 'Greenview St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:20am', 'W Hamilton St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:30am', 'Ridgewood Prk');
+SQL> INSERT INTO SchedArrivalTime Values ('06:39am', 'State St');
+SQL> --R2
+SQL> INSERT INTO SchedArrivalTime Values ('06:50am', 'State St');
+SQL> INSERT INTO SchedArrivalTime Values ('07:02am', 'Ridgewood Prk');
+SQL> INSERT INTO SchedArrivalTime Values ('07:13am', 'W Hamilton St');
+SQL> INSERT INTO SchedArrivalTime Values ('07:25am', 'Greenview St');
+SQL> --R3
+SQL> INSERT INTO SchedArrivalTime Values ('06:00am', 'Hanover Ave');
+SQL> INSERT INTO SchedArrivalTime Values ('06:12am', 'Ridgewood Prk');
+SQL> INSERT INTO SchedArrivalTime Values ('06:19am', 'State St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:28am', 'Hilldale Rd');
+SQL> --R4
+SQL> INSERT INTO SchedArrivalTime Values ('06:34am', 'Hilldale Rd');
+SQL> INSERT INTO SchedArrivalTime Values ('06:45am', 'State St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:53am', 'Ridgewood Prk');
+SQL> INSERT INTO SchedArrivalTime Values ('07:00am', 'Hanover Ave');
+SQL> --R5
+SQL> INSERT INTO SchedArrivalTime Values ('06:00am', 'Bayberry Ln');
+SQL> INSERT INTO SchedArrivalTime Values ('06:11am', 'State St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:17am', 'Windfall St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:25am', 'Rose Garden');
+SQL> --R6
+SQL> INSERT INTO SchedArrivalTime Values ('06:30am', 'Rose Garden');
+SQL> INSERT INTO SchedArrivalTime Values ('06:37am', 'Windfall St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:46am', 'State St');
+SQL> INSERT INTO SchedArrivalTime Values ('06:56am', 'Bayberry Ln');
+SQL> --
+SQL> --Populate RodeOn Table
+SQL> --
+SQL> INSERT INTO RodeOn VALUES (965574, '1FDX4P1', TO_DATE('02/12/2002', 'MM/DD/YYYY'), 'Greenview St', 'Ridgewood Prk');
+SQL> INSERT INTO RodeOn VALUES (990311, '1GCJC39', TO_DATE('04/25/2007', 'MM/DD/YYYY'), 'Hanover Ave', 'State St');
+SQL> INSERT INTO RodeOn VALUES (120746, '2BVBF34', TO_DATE('07/19/2015', 'MM/DD/YYYY'), 'Bayberry Ln', 'Rose Garden');
+SQL> INSERT INTO RodeOn VALUES (120746, '1X2V067', TO_DATE('07/19/2015', 'MM/DD/YYYY'), 'Rose Garden', 'Windfall St');
+SQL> INSERT INTO RodeOn VALUES (526975, '1X2V067', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'Windfall St', 'State St');
+SQL> INSERT INTO RodeOn VALUES (526975, 'WP0AB09', TO_DATE('10/29/2013', 'MM/DD/YYYY'), 'State St', 'W Hamilton St');
+SQL> INSERT INTO RodeOn VALUES (193044, '1GCJC39', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'Ridgewood Prk', 'State St');
+SQL> INSERT INTO RodeOn VALUES (193044, '1X2V067', TO_DATE('01/13/2010', 'MM/DD/YYYY'), 'State St', 'Bayberry Ln');
+SQL> INSERT INTO RodeOn VALUES (128525, '1X2V067', TO_DATE('09/15/2009', 'MM/DD/YYYY'), 'Rose Garden', 'State St');
+SQL> INSERT INTO RodeOn VALUES (128525, 'WP0AB09', TO_DATE('09/15/2009', 'MM/DD/YYYY'), 'State St', 'Greenview St');
+SQL> INSERT INTO RodeOn VALUES (390503, '1GCJC39', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Hanover Ave', 'Ridgewood Prk');
+SQL> INSERT INTO RodeOn VALUES (390503, 'WP0AB09', TO_DATE('06/06/2016', 'MM/DD/YYYY'), 'Ridgewood Prk', 'W Hamilton St');
+SQL> INSERT INTO RodeOn VALUES (293308, 'JN8AR05', TO_DATE('12/21/2008', 'MM/DD/YYYY'), 'Hilldale Rd', 'Hanover Ave');
+SQL> INSERT INTO RodeOn VALUES (432432, '2BVBF34', TO_DATE('06/19/2008', 'MM/DD/YYYY'), 'Rose Garden', 'Bayberry Ln');
+SQL> INSERT INTO RodeOn VALUES (432432, '1X2V067', TO_DATE('06/19/2010', 'MM/DD/YYYY'), 'Bayberry Ln', 'Rose Garden');
+SQL> --
+SQL> -- Populate Stop on Route Table
+SQL> --
+SQL> INSERT INTO StopOnRoute VALUES (1, 'Greenview St', 1);
+SQL> INSERT INTO StopOnRoute VALUES (1, 'W Hamilton St', 2);
+SQL> INSERT INTO StopOnRoute VALUES (1, 'Ridgewood Prk', 3);
+SQL> INSERT INTO StopOnRoute VALUES (1, 'State St', 4);
+SQL> INSERT INTO StopOnRoute VALUES (2, 'State St', 1);
+SQL> INSERT INTO StopOnRoute VALUES (2, 'Ridgewood Prk', 2);
+SQL> INSERT INTO StopOnRoute VALUES (2, 'W Hamilton St', 3);
+SQL> INSERT INTO StopOnRoute VALUES (2, 'Greenview St', 4);
+SQL> INSERT INTO StopOnRoute VALUES (3, 'Hanover Ave', 1);
+SQL> INSERT INTO StopOnRoute VALUES (3, 'Ridgewood Prk', 2);
+SQL> INSERT INTO StopOnRoute VALUES (3, 'State St', 3);
+SQL> INSERT INTO StopOnRoute VALUES (3, 'Hilldale Rd', 4);
+SQL> INSERT INTO StopOnRoute VALUES (4, 'Hilldale Rd', 1);
+SQL> INSERT INTO StopOnRoute VALUES (4, 'State St', 2);
+SQL> INSERT INTO StopOnRoute VALUES (4, 'Ridgewood Prk', 3);
+SQL> INSERT INTO StopOnRoute VALUES (4, 'Hanover Ave', 4);
+SQL> INSERT INTO StopOnRoute VALUES (5, 'Bayberry Ln', 1);
+SQL> INSERT INTO StopOnRoute VALUES (5, 'State St', 2);
+SQL> INSERT INTO StopOnRoute VALUES (5, 'Windfall St', 3);
+SQL> INSERT INTO StopOnRoute VALUES (5, 'Rose Garden', 4);
+SQL> INSERT INTO StopOnRoute VALUES (6, 'Rose Garden', 1);
+SQL> INSERT INTO StopOnRoute VALUES (6, 'Windfall St', 2);
+SQL> INSERT INTO StopOnRoute VALUES (6, 'State St', 3);
+SQL> INSERT INTO StopOnRoute VALUES (6, 'Bayberry Ln', 4);
+SQL> 
+SQL> SET FEEDBACK ON
+SQL> COMMIT;
+
+Commit complete.
+
+SQL> 
+SQL> SELECT * FROM Rider;
+
+   RIDERID FNAME           LNAME                                                
+---------- --------------- ---------------                                      
+    965574 Judith          Edwards                                              
+    990311 Alan            Brown                                                
+    120746 Jesse           Simmons                                              
+    526975 Ronald          Hall                                                 
+    193044 Angela          Peterson                                             
+    128525 Phillip         Jones                                                
+    390503 Jack            Thompson                                             
+    293308 Sharon          Garcia                                               
+    432432 Jerome          Smith                                                
+
+9 rows selected.
+
+SQL> SELECT * FROM Driver;
+
+       SSN FNAME      LNAME          SALARY      DRANK                          
+---------- ---------- ---------- ---------- ----------                          
+ 685320372 Lillian    Bryant          25000          1                          
+ 157729572 Debra      Cooper          49000          3                          
+ 868142440 Justin     Ward            55000          3                          
+ 222656890 Larry      Taylor          23000          1                          
+ 897461302 James      Bush            51000          3                          
+ 120384921 David      Ross            44000          2                          
+
+6 rows selected.
+
+SQL> SELECT * FROM Bus;
+
+VIN       NUMSEATS  DRIVERSSN   ROUTENUM                                        
+------- ---------- ---------- ----------                                        
+1FDX4P1         30  685320372          1                                        
+WP0AB09         60  157729572          2                                        
+1GCJC39         80  868142440          3                                        
+JN8AR05         70  222656890          4                                        
+2BVBF34         55  897461302          5                                        
+1X2V067         40  120384921          6                                        
+
+6 rows selected.
+
+SQL> SELECT * FROM Route;
+
+      RNUM STARTLOC             ENDLOC                                          
+---------- -------------------- --------------------                            
+         1 Greenview St         State St                                        
+         2 State St             Greenview St                                    
+         3 Hanover Ave          Hilldale Rd                                     
+         4 Hilldale Rd          Hanover Ave                                     
+         5 Bayberry Ln          Rose Garden                                     
+         6 Rose Garden          Bayberry Ln                                     
+
+6 rows selected.
+
+SQL> SELECT * FROM Stop;
+
+STOPNAME             STOPCAPACITY                                               
+-------------------- ------------                                               
+Greenview St                   67                                               
+W Hamilton St                  70                                               
+Ridgewood Prk                  45                                               
+Hanover Ave                    42                                               
+State St                       61                                               
+Hilldale Rd                    35                                               
+Bayberry Ln                    82                                               
+Windfall St                    35                                               
+Rose Garden                    60                                               
+
+9 rows selected.
+
+SQL> SELECT * FROM finHistory;
+
+HISTORYDA   ROUTENUM    PROJREV     ACTREV   EXPENSES                           
+--------- ---------- ---------- ---------- ----------                           
+09-AUG-09          1   13500.97   14074.12    1200.98                           
+09-AUG-08          2   12534.66   12812.22    3212.65                           
+09-AUG-12          3    9876.43   12349.87     983.12                           
+09-AUG-08          4   10543.43   11134.87    1189.12                           
+09-AUG-09          5   11645.23   12218.92    3012.14                           
+09-AUG-10          6   13453.43   12345.87    1083.32                           
+09-AUG-11          1    18798.4   13206.22    1987.76                           
+09-AUG-11          2   19723.33   15844.39     4099.3                           
+09-AUG-08          3   14387.86   13723.22    3722.34                           
+09-AUG-10          4   12134.12   14927.41    2022.45                           
+09-AUG-11          5   11346.23   12328.67    3454.14                           
+
+HISTORYDA   ROUTENUM    PROJREV     ACTREV   EXPENSES                           
+--------- ---------- ---------- ---------- ----------                           
+09-AUG-11          6   10234.43   10321.82    1022.75                           
+09-AUG-08          1   13356.23   16899.87    2456.55                           
+09-AUG-09          2   15998.71   13822.25    4092.32                           
+09-AUG-09          3   10654.12    8906.11    1231.21                           
+09-AUG-11          4    8934.32    9908.32    1119.39                           
+09-AUG-10          5   11747.42   10901.37    2909.23                           
+09-AUG-08          6    7986.87    9903.38     999.34                           
+
+18 rows selected.
+
+SQL> SELECT * FROM SchedArrivalTime;
+
+SCHEDARRIVALTIME STOPNAME                                                       
+---------------- --------------------                                           
+06:00am          Bayberry Ln                                                    
+06:00am          Greenview St                                                   
+06:00am          Hanover Ave                                                    
+06:11am          State St                                                       
+06:12am          Ridgewood Prk                                                  
+06:17am          Windfall St                                                    
+06:19am          State St                                                       
+06:20am          W Hamilton St                                                  
+06:25am          Rose Garden                                                    
+06:28am          Hilldale Rd                                                    
+06:30am          Ridgewood Prk                                                  
+
+SCHEDARRIVALTIME STOPNAME                                                       
+---------------- --------------------                                           
+06:30am          Rose Garden                                                    
+06:34am          Hilldale Rd                                                    
+06:37am          Windfall St                                                    
+06:39am          State St                                                       
+06:45am          State St                                                       
+06:46am          State St                                                       
+06:50am          State St                                                       
+06:53am          Ridgewood Prk                                                  
+06:56am          Bayberry Ln                                                    
+07:00am          Hanover Ave                                                    
+07:02am          Ridgewood Prk                                                  
+
+SCHEDARRIVALTIME STOPNAME                                                       
+---------------- --------------------                                           
+07:13am          W Hamilton St                                                  
+07:25am          Greenview St                                                   
+
+24 rows selected.
+
+SQL> SELECT * FROM RodeOn;
+
+PASSENGERID BUSVIN  RIDEDATE  ONSTOP               OFFSTOP                      
+----------- ------- --------- -------------------- --------------------         
+     965574 1FDX4P1 12-FEB-02 Greenview St         Ridgewood Prk                
+     990311 1GCJC39 25-APR-07 Hanover Ave          State St                     
+     120746 2BVBF34 19-JUL-15 Bayberry Ln          Rose Garden                  
+     120746 1X2V067 19-JUL-15 Rose Garden          Windfall St                  
+     526975 1X2V067 29-OCT-13 Windfall St          State St                     
+     526975 WP0AB09 29-OCT-13 State St             W Hamilton St                
+     193044 1GCJC39 13-JAN-10 Ridgewood Prk        State St                     
+     193044 1X2V067 13-JAN-10 State St             Bayberry Ln                  
+     128525 1X2V067 15-SEP-09 Rose Garden          State St                     
+     128525 WP0AB09 15-SEP-09 State St             Greenview St                 
+     390503 1GCJC39 06-JUN-16 Hanover Ave          Ridgewood Prk                
+
+PASSENGERID BUSVIN  RIDEDATE  ONSTOP               OFFSTOP                      
+----------- ------- --------- -------------------- --------------------         
+     390503 WP0AB09 06-JUN-16 Ridgewood Prk        W Hamilton St                
+     293308 JN8AR05 21-DEC-08 Hilldale Rd          Hanover Ave                  
+     432432 2BVBF34 19-JUN-08 Rose Garden          Bayberry Ln                  
+     432432 1X2V067 19-JUN-10 Bayberry Ln          Rose Garden                  
+
+15 rows selected.
+
+SQL> SELECT * FROM StopOnRoute;
+
+      RNUM STOPNAME             STOPSEQUENCE                                    
+---------- -------------------- ------------                                    
+         1 Greenview St                    1                                    
+         1 W Hamilton St                   2                                    
+         1 Ridgewood Prk                   3                                    
+         1 State St                        4                                    
+         2 State St                        1                                    
+         2 Ridgewood Prk                   2                                    
+         2 W Hamilton St                   3                                    
+         2 Greenview St                    4                                    
+         3 Hanover Ave                     1                                    
+         3 Ridgewood Prk                   2                                    
+         3 State St                        3                                    
+
+      RNUM STOPNAME             STOPSEQUENCE                                    
+---------- -------------------- ------------                                    
+         3 Hilldale Rd                     4                                    
+         4 Hilldale Rd                     1                                    
+         4 State St                        2                                    
+         4 Ridgewood Prk                   3                                    
+         4 Hanover Ave                     4                                    
+         5 Bayberry Ln                     1                                    
+         5 State St                        2                                    
+         5 Windfall St                     3                                    
+         5 Rose Garden                     4                                    
+         6 Rose Garden                     1                                    
+         6 Windfall St                     2                                    
+
+      RNUM STOPNAME             STOPSEQUENCE                                    
+---------- -------------------- ------------                                    
+         6 State St                        3                                    
+         6 Bayberry Ln                     4                                    
+
+24 rows selected.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> --Query 1: Join involving at least 4 relations
+SQL> --Find the Ssn, First and last name, and the Vin of all drivers who drove busses that stop at Ridgewood Prk
+SQL> --Order by driver Ssn
+SQL> SELECT D.Ssn, D.fName, D.lName, B.VIN
+  2  FROM Driver D, Bus B, Route R, Stop S, StopOnRoute St
+  3  WHERE D.Ssn = B.driverSsn AND
+  4  	   B.routeNum = R.rNum AND
+  5  	   R.rNum = St.rNum AND
+  6  	   St.stopName = S.stopName AND
+  7  	   S.stopName = 'Ridgewood Prk'
+  8  ORDER BY D.Ssn;
+
+       SSN FNAME      LNAME      VIN                                            
+---------- ---------- ---------- -------                                        
+ 157729572 Debra      Cooper     WP0AB09                                        
+ 222656890 Larry      Taylor     JN8AR05                                        
+ 685320372 Lillian    Bryant     1FDX4P1                                        
+ 868142440 Justin     Ward       1GCJC39                                        
+
+4 rows selected.
+
+SQL> 
+SQL> --Query 2: Self Join:
+SQL> --Find the fName, lName, and rank of all pairs of drivers who have the same rank
+SQL> SELECT D1.fName, D1.lName, D1.dRank, D2.fName, D2.lName, D2.dRank
+  2  FROM Driver D1, Driver D2
+  3  WHERE D1.dRank = D2.dRank AND
+  4  	   D1.Ssn < D2.Ssn;
+
+FNAME      LNAME           DRANK FNAME      LNAME           DRANK               
+---------- ---------- ---------- ---------- ---------- ----------               
+Larry      Taylor              1 Lillian    Bryant              1               
+Debra      Cooper              3 Justin     Ward                3               
+Justin     Ward                3 James      Bush                3               
+Debra      Cooper              3 James      Bush                3               
+
+4 rows selected.
+
+SQL> 
+SQL> --Query 3: Union, Intersect, Minus
+SQL> --Find the ssn, rank, and numseats of all drivers who are of rank 2 or greater and drive busses with more than 40 seats
+SQL> SELECT D.Ssn, D.dRank, B.numSeats
+  2  FROM Driver D, Bus B
+  3  WHERE D.Ssn = B.driverSsn AND
+  4  	   D.dRank >= 2
+  5  INTERSECT
+  6  SELECT D.Ssn, D.dRank, B.numSeats
+  7  From Driver D, Bus B
+  8  WHERE D.Ssn = B.driverSsn AND
+  9  	   B.numSeats > 40;
+
+       SSN      DRANK   NUMSEATS                                                
+---------- ---------- ----------                                                
+ 157729572          3         60                                                
+ 868142440          3         80                                                
+ 897461302          3         55                                                
+
+3 rows selected.
+
+SQL> 
+SQL> --Query 4: SUM, AVG, MAX, MIN
+SQL> --Find the route number and sum of every routes actual revenue between 2008 and 2012
+SQL> SELECT R.rNum, SUM(F.actRev)
+  2  FROM Route R, FinHistory F
+  3  WHERE R.rNum = F.routeNum AND
+  4  	   (historyDate > TO_DATE('12/31/2007', 'MM/DD/YYYY') AND
+  5  	    historyDate < TO_DATE('01/01/2013', 'MM/DD/YYYY'))
+  6  GROUP BY R.rNum;
+
+      RNUM SUM(F.ACTREV)                                                        
+---------- -------------                                                        
+         1      44180.21                                                        
+         6      32571.07                                                        
+         2      42478.86                                                        
+         4       35970.6                                                        
+         5      35448.96                                                        
+         3       34979.2                                                        
+
+6 rows selected.
+
+SQL> 
+SQL> --Query 5: Group order by and having in one query:
+SQL> --Find the name and number of routes served of all stops that serve more than 3 routes
+SQL> --Order by the number of stops
+SQL> SELECT S.stopName, COUNT(S.stopName)
+  2  FROM StopOnRoute St, Stop S
+  3  WHERE S.stopName = St.stopName
+  4  GROUP BY S.stopName
+  5  HAVING COUNT(S.stopName) > 3
+  6  ORDER BY COUNT(S.stopName);
+
+STOPNAME             COUNT(S.STOPNAME)                                          
+-------------------- -----------------                                          
+Ridgewood Prk                        4                                          
+State St                             6                                          
+
+2 rows selected.
+
+SQL> 
+SQL> --Query 6: Correlated Subquery:
+SQL> --find the stop name, capacity and route number of stops that have the highest capacity along each route
+SQL> --Order by the route number
+SQL> SELECT S.stopName, S.stopCapacity, R.rNum
+  2  FROM Stop S, Route R
+  3  WHERE S.stopCapacity = (
+  4  	     SELECT MAX(S2.stopCapacity)
+  5  	     FROM STOP S2, StopOnRoute St
+  6  	     WHERE St.rNum = R.rNum AND
+  7  		   S2.stopname = St.stopName)
+  8  ORDER BY R.rNum;
+
+STOPNAME             STOPCAPACITY       RNUM                                    
+-------------------- ------------ ----------                                    
+W Hamilton St                  70          1                                    
+W Hamilton St                  70          2                                    
+State St                       61          3                                    
+State St                       61          4                                    
+Bayberry Ln                    82          5                                    
+Bayberry Ln                    82          6                                    
+
+6 rows selected.
+
+SQL> 
+SQL> --Query 7: Non-Correlated Subquery:
+SQL> --Find the ID and last name of every rider who hasn't boarded a bus at a stop on route 2.
+SQL> --Order by the Rider's Id
+SQL> SELECT P.riderId, P.lName
+  2  FROM  Rider P
+  3  WHERE P.riderId NOT IN
+  4  	    (SELECT DISTINCT O.passengerID
+  5  	     FROM RodeOn O, StopOnRoute St
+  6  	     WHERE St.rNum = 2 AND
+  7  		  (O.onStop = St.stopName))
+  8  ORDER BY P.riderId;
+
+   RIDERID LNAME                                                                
+---------- ---------------                                                      
+    120746 Simmons                                                              
+    293308 Garcia                                                               
+    432432 Smith                                                                
+    990311 Brown                                                                
+
+4 rows selected.
+
+SQL> 
+SQL> --Query 8: Division Query: Find the riderID, first and last name of all the riders who rode on all busses that stop at rose garden
+SQL> SELECT R.riderId, R.fName, R.lName
+  2  FROM Rider R
+  3  WHERE NOT EXISTS ((SELECT B.VIN
+  4  			FROM Bus B, StopOnRoute St
+  5  			WHERE B.routeNum = St.rNum AND
+  6  			      St.stopName = 'Rose Garden')
+  7  			MINUS
+  8  			(SELECT B.VIN
+  9  			 FROM Bus B, StopOnRoute St, RodeOn P
+ 10  			 WHERE P.passengerId = R.riderId AND
+ 11  			       P.busVin = B.VIN AND
+ 12  			       B.routeNum = St.rNum AND
+ 13  			       St.stopName = 'Rose Garden'));
+
+   RIDERID FNAME           LNAME                                                
+---------- --------------- ---------------                                      
+    120746 Jesse           Simmons                                              
+    432432 Jerome          Smith                                                
+
+2 rows selected.
+
+SQL> 
+SQL> --Query 9: Outer Join Query: Find the first name and last name of all the drivers and the VIN of the busses they drive
+SQL> --Order by the Driver's Ssn
+SQL> SELECT D.fName, D.lName, B.VIN
+  2  FROM Driver D LEFT OUTER JOIN Bus B ON B.driverSsn = D.Ssn
+  3  ORDER BY D.Ssn;
+
+FNAME      LNAME      VIN                                                       
+---------- ---------- -------                                                   
+David      Ross       1X2V067                                                   
+Debra      Cooper     WP0AB09                                                   
+Larry      Taylor     JN8AR05                                                   
+Lillian    Bryant     1FDX4P1                                                   
+Justin     Ward       1GCJC39                                                   
+James      Bush       2BVBF34                                                   
+
+6 rows selected.
+
+SQL> 
+SQL> --Query 10: RANK Query: Find the rank of a stop with capacity 54 among all the other stops
+SQL> SELECT RANK (54) WITHIN GROUP
+  2  	    (ORDER BY stopCapacity) "Rank of Stop with Capacity 54"
+  3  FROM Stop;
+
+Rank of Stop with Capacity 54                                                   
+-----------------------------                                                   
+                            5                                                   
+
+1 row selected.
+
+SQL> 
+SQL> --Query 11: TOP-N Query: Find the ssn, last name, and salary of the 3 highest paid drivers
+SQL> SELECT Ssn, lName, salary
+  2  FROM (SELECT * FROM Driver ORDER BY salary DESC)
+  3  WHERE ROWNUM < 4;
+
+       SSN LNAME          SALARY                                                
+---------- ---------- ----------                                                
+ 868142440 Ward            55000                                                
+ 897461302 Bush            51000                                                
+ 157729572 Cooper          49000                                                
+
+3 rows selected.
+
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> 
+SQL> --
+SQL> --IC Tests
+SQL> --
+SQL> 
+SQL> 
+SQL> --
+SQL> --Constraint 1 Tests: IC_uniqueRnum, No duplicate route numbers
+SQL> --
+SQL> 
+SQL> 
+SQL> 
+SQL> INSERT INTO Route VALUES (4, 'Rose Garden', 'State St');
+INSERT INTO Route VALUES (4, 'Rose Garden', 'State St')
+*
+ERROR at line 1:
+ORA-00001: unique constraint (VALIN.IC_UNIQUERNUM) violated 
+
+
+SQL> INSERT INTO Route VALUES (1, 'State St', 'Ridgewood Prk');
+INSERT INTO Route VALUES (1, 'State St', 'Ridgewood Prk')
+*
+ERROR at line 1:
+ORA-00001: unique constraint (VALIN.IC_UNIQUERNUM) violated 
+
+
+SQL> 
+SQL> 
+SQL> 
+SQL> --
+SQL> --Constraint 2 Tests: IC_bDriv, A driver does not exist
+SQL> --
+SQL> 
+SQL> 
+SQL> 
+SQL> INSERT INTO BUS VALUES ('243243', 50, 938473618, 6);
+INSERT INTO BUS VALUES ('243243', 50, 938473618, 6)
+*
+ERROR at line 1:
+ORA-02291: integrity constraint (VALIN.IC_BDRIV) violated - parent key not 
+found 
+
+
+SQL> INSERT INTO BUS VALUES ('1ER93IF', 65, 453627483, 5);
+INSERT INTO BUS VALUES ('1ER93IF', 65, 453627483, 5)
+*
+ERROR at line 1:
+ORA-02291: integrity constraint (VALIN.IC_BDRIV) violated - parent key not 
+found 
+
+
+SQL> 
+SQL> 
+SQL> 
+SQL> --
+SQL> --Constraint 3 Test: IC_rank, A drivers rank can only be between 1 and 3 inclusive
+SQL> --
+SQL> 
+SQL> 
+SQL> 
+SQL> INSERT INTO Driver VALUES (948374636, 'Kevin', 'Jones', 45000, 6);
+INSERT INTO Driver VALUES (948374636, 'Kevin', 'Jones', 45000, 6)
+*
+ERROR at line 1:
+ORA-02290: check constraint (VALIN.IC_RANK) violated 
+
+
+SQL> INSERT INTO Driver VALUES (373649382, 'Adam', 'Smith', 45000, 0);
+INSERT INTO Driver VALUES (373649382, 'Adam', 'Smith', 45000, 0)
+*
+ERROR at line 1:
+ORA-02290: check constraint (VALIN.IC_RANK) violated 
+
+
+SQL> 
+SQL> 
+SQL> 
+SQL> --
+SQL> --Constraint 4 Test: IC_rankSal, A driver of rank = 3, must have a salary >= $45000
+SQL> --
+SQL> 
+SQL> 
+SQL> 
+SQL> INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 3);
+INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 3)
+*
+ERROR at line 1:
+ORA-02290: check constraint (VALIN.IC_RANKSAL) violated 
+
+
+SQL> INSERT INTO Driver VALUES (293742343, 'Michelle', 'Brown', 12000, 3);
+INSERT INTO Driver VALUES (293742343, 'Michelle', 'Brown', 12000, 3)
+*
+ERROR at line 1:
+ORA-02290: check constraint (VALIN.IC_RANKSAL) violated 
+
+
+SQL> 
+SQL> 
+SQL> COMMIT;
+
+Commit complete.
+
+SQL> 
+SQL> SPOOL OFF
