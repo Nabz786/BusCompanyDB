@@ -36,12 +36,9 @@ CREATE TABLE Driver
 	lName VARCHAR(10) NOT NULL,
 	salary INTEGER NOT NULL,
 	dRank INTEGER NOT NULL,
-	startDate DATE NOT NULL,
 	--
 	--IC_uniqueDr: Each driver is indentified by their Ssn
 	CONSTRAINT IC_uniqueDr PRIMARY KEY (Ssn),
-	--IC_ssn: Make sure that an SSN contains only 9 numbers
---	CONSTRAINT DrIC1 CHECK(REGEXP_LIKE(Ssn,'^[[:digit:]]{9}$'))
 	--IC_rank: A drivers rank is only between 1 and 3 inclusive
 	CONSTRAINT IC_rank CHECK(NOT(dRank < 1 OR dRank > 3)),
 	--IC_ranksal: Drivers >= rank 3 must make at least $45000
@@ -189,12 +186,12 @@ INSERT INTO Rider VALUES (432432, 'Jerome', 'Smith');
 --
 -- Populate the Driver Table
 --
-INSERT INTO Driver VALUES (685320372, 'Lillian', 'Bryant', 25000, 1, TO_DATE('03/09/2015', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (157729572, 'Debra', 'Cooper', 49000, 3, TO_DATE('05/25/2009', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (868142440, 'Justin', 'Ward', 55000, 3, TO_DATE('09/28/2000', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (222656890, 'Larry', 'Taylor', 23000, 1, TO_DATE('12/09/2012', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (897461302, 'James', 'Bush', 51000, 3, TO_DATE('02/12/2006', 'MM/DD/YYYY'));
-INSERT INTO Driver VALUES (120384921, 'David', 'Ross', 44000, 2, TO_DATE('03/28/2004', 'MM/DD/YYYY'));
+INSERT INTO Driver VALUES (685320372, 'Lillian', 'Bryant', 25000, 1);
+INSERT INTO Driver VALUES (157729572, 'Debra', 'Cooper', 49000, 3);
+INSERT INTO Driver VALUES (868142440, 'Justin', 'Ward', 55000, 3);
+INSERT INTO Driver VALUES (222656890, 'Larry', 'Taylor', 23000, 1);
+INSERT INTO Driver VALUES (897461302, 'James', 'Bush', 51000, 3);
+INSERT INTO Driver VALUES (120384921, 'David', 'Ross', 44000, 2);
 --
 -- Populate the Stop Table
 --
@@ -343,7 +340,7 @@ SELECT * FROM StopOnRoute;
 
 
 --Query 1: Join involving at least 4 relations
---Find the Ssn, First and last name, andthe Vin of all drivers who drove busses that stop at Ridgewood Prk
+--Find the Ssn, First and last name, and the Vin of all drivers who drove busses that stop at Ridgewood Prk
 --Order by driver Ssn
 SELECT D.Ssn, D.fName, D.lName, B.VIN
 FROM Driver D, Bus B, Route R, Stop S, StopOnRoute St
@@ -355,26 +352,26 @@ WHERE D.Ssn = B.driverSsn AND
 ORDER BY D.Ssn;
 
 --Query 2: Self Join:
---Find all pairs of drivers who have the same rank
+--Find the fName, lName, and rank of all pairs of drivers who have the same rank
 SELECT D1.fName, D1.lName, D1.dRank, D2.fName, D2.lName, D2.dRank
 FROM Driver D1, Driver D2
 WHERE D1.dRank = D2.dRank AND
       D1.Ssn < D2.Ssn;
 
 --Query 3: Union, Intersect, Minus
---Find all drivers who started on or after 2006 and drive busses with more than 40 seats
-SELECT D.Ssn, D.startDate, B.numSeats
+--Find the ssn, rank, and numseats of all drivers who are of rank 2 or greater and drive busses with more than 40 seats
+SELECT D.Ssn, D.dRank, B.numSeats
 FROM Driver D, Bus B
 WHERE D.Ssn = B.driverSsn AND
-      D.startDate >= TO_DATE('12/31/2005', 'MM/DD/YYYY')
+      D.dRank >= 2
 INTERSECT
-SELECT D.Ssn, D.startDate, B.numSeats
+SELECT D.Ssn, D.dRank, B.numSeats
 From Driver D, Bus B
 WHERE D.Ssn = B.driverSsn AND
       B.numSeats > 40;
 
 --Query 4: SUM, AVG, MAX, MIN
---Find sum of every routes actual revenue between 2008 and 2012
+--Find the route number and sum of every routes actual revenue between 2008 and 2012
 SELECT R.rNum, SUM(F.actRev)
 FROM Route R, FinHistory F
 WHERE R.rNum = F.routeNum AND
@@ -383,7 +380,7 @@ WHERE R.rNum = F.routeNum AND
 GROUP BY R.rNum;
 
 --Query 5: Group order by and having in one query:
---Find all stops that serve more than 3 routes
+--Find the name and number of routes served of all stops that serve more than 3 routes
 --Order by the number of stops
 SELECT S.stopName, COUNT(S.stopName)
 FROM StopOnRoute St, Stop S
@@ -393,7 +390,7 @@ HAVING COUNT(S.stopName) > 3
 ORDER BY COUNT(S.stopName);
 
 --Query 6: Correlated Subquery:
---find the stop that has the highest capacity along each route
+--find the stop name, capacity and route number of stops that have the highest capacity along each route
 --Order by the route number
 SELECT S.stopName, S.stopCapacity, R.rNum
 FROM Stop S, Route R
@@ -464,12 +461,12 @@ INSERT INTO BUS VALUES ('243243', 50, 938473618, 6);
 INSERT INTO BUS VALUES ('1ER93IF', 65, 453627483, 5);
 
 --Constraint 3 Test: IC_rank, A drivers rank can only be between 1 and 3 inclusive
-INSERT INTO Driver VALUES (948374636, 'Kevin', 'Jones', 45000, 6, TO_DATE('08/09/2002', 'DD/MM/YYYY'));
-INSERT INTO Driver VALUES (373649382, 'Adam', 'Smith', 45000, 0, TO_DATE('08/09/2010', 'DD/MM/YYYY'));
+INSERT INTO Driver VALUES (948374636, 'Kevin', 'Jones', 45000, 6);
+INSERT INTO Driver VALUES (373649382, 'Adam', 'Smith', 45000, 0);
 
 --Constraint 4 Test: IC_rankSal, A driver of rank = 3, must have a salary >= $45000
-INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 3, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
-INSERT INTO Driver VALUES (293742343, 'Michelle', 'Brown', 12000, 3, TO_DATE('08/09/2012', 'DD/MM/YYYY')); 
+INSERT INTO Driver VALUES (938493928, 'Kevin', 'Jones', 35000, 3); 
+INSERT INTO Driver VALUES (293742343, 'Michelle', 'Brown', 12000, 3); 
 
 
 COMMIT;
